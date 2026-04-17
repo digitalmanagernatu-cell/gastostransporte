@@ -1,0 +1,6 @@
+Sube tu logo en esta carpeta con el nombre: logo.png
+
+Formatos admitidos: PNG, JPG, SVG (si usas SVG renombra a logo.svg 
+y cambia la referencia en src/components/Header.tsx)
+
+Tamaño recomendado: altura máxima 40px, fondo transparente.
