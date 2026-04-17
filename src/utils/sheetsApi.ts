@@ -60,11 +60,13 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
       continue
     }
 
+    // Skip total/subtotal rows everywhere (the sheet has a grand TOTALES row at the bottom)
+    const upperCheck = (rawNombre || rawCodigo).toUpperCase()
+    if (upperCheck === 'TOTAL' || upperCheck.startsWith('TOTAL ') || upperCheck === 'TOTALES') continue
+
     if (!inSinAsignarBlock) {
-      // Regular client rows: require a client name, skip totals
+      // Regular client rows: require a client name
       if (!rawNombre) continue
-      const upper = rawNombre.toUpperCase()
-      if (upper === 'TOTAL' || upper.startsWith('TOTAL ') || upper === 'TOTALES') continue
     }
 
     // Build display name; sin asignar rows may have empty col B
