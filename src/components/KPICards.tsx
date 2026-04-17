@@ -3,7 +3,7 @@ import type { KPIs } from '../types'
 const eur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 
-const pct = (n: number) => (n * 100).toFixed(1) + '%'
+const pctFmt = (n: number) => (n * 100).toFixed(1) + '%'
 
 interface CardProps {
   title: string
@@ -51,23 +51,25 @@ export default function KPICards({ kpis, isLoading }: Props) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+
+      {/* 1 — Total Pedidos */}
       <Card
-        title="Total Transporte"
-        value={eur(kpis.totalTransporte)}
-        sub={kpis.totalTransporteSA > 0 ? `Sin asignar: ${eur(kpis.totalTransporteSA)}` : undefined}
-        borderColor="border-teal-500"
+        title="Total Pedidos"
+        value={kpis.totalPedidos.toLocaleString('es-ES')}
+        sub={`${kpis.numClientes} clientes con pedidos`}
+        borderColor="border-indigo-500"
         isLoading={loading}
         icon={
-          <svg className="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0l2 2m2-2V8a1 1 0 00-1-1h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 0015 10.414V16" />
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         }
       />
+
+      {/* 2 — Facturación Total */}
       <Card
-        title="Facturación (Base Imp.)"
+        title="Facturación Total (Base Imp.)"
         value={eur(kpis.totalFacturacion)}
         sub="Suma base imponible"
         borderColor="border-blue-500"
@@ -79,9 +81,28 @@ export default function KPICards({ kpis, isLoading }: Props) {
           </svg>
         }
       />
+
+      {/* 3 — Gastos Totales Transporte */}
+      <Card
+        title="Gastos Totales Transporte"
+        value={eur(kpis.totalTransporte)}
+        sub={kpis.totalTransporteSA > 0 ? `NATU (sin asignar): ${eur(kpis.totalTransporteSA)}` : undefined}
+        borderColor="border-teal-500"
+        isLoading={loading}
+        icon={
+          <svg className="w-8 h-8 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0l2 2m2-2V8a1 1 0 00-1-1h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 0015 10.414V16" />
+          </svg>
+        }
+      />
+
+      {/* 4 — % Transporte / Facturación */}
       <Card
         title="% Transporte / Facturación"
-        value={pct(kpis.pctMedio)}
+        value={pctFmt(kpis.pctMedio)}
         sub={kpis.pctMedio > 0.10 ? '⚠ Por encima del objetivo 10%' : '✓ Dentro del objetivo 10%'}
         subAlert={kpis.pctMedio > 0.10}
         borderColor={kpis.pctMedio > 0.10 ? 'border-red-500' : 'border-green-500'}
@@ -93,19 +114,8 @@ export default function KPICards({ kpis, isLoading }: Props) {
           </svg>
         }
       />
-      <Card
-        title="Clientes con pedidos"
-        value={String(kpis.numClientes)}
-        sub="Con código asignado"
-        borderColor="border-violet-500"
-        isLoading={loading}
-        icon={
-          <svg className="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        }
-      />
+
+      {/* 5 — Alertas */}
       <Card
         title="Alertas > 10%"
         value={String(kpis.alertas.length)}

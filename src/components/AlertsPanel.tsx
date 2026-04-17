@@ -4,7 +4,7 @@ import type { ClientRow } from '../types'
 const eur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 
-const COLLAPSED_COUNT = 3
+const COLLAPSED_COUNT = 9
 
 interface Props {
   alertas: ClientRow[]
@@ -36,7 +36,7 @@ export default function AlertsPanel({ alertas }: Props) {
       </div>
 
       {/* Cards */}
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {visible.map(r => {
           const pctVal = r.pctTransporte * 100
           const barWidth = Math.min((pctVal / 30) * 100, 100)

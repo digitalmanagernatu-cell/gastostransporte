@@ -71,7 +71,10 @@ export default function App() {
   const lineaNegocioData = useMemo(() => byLineaNegocio(filteredRows), [filteredRows])
   const comercialData = useMemo(() => byComercial(filteredRows), [filteredRows])
   const topClientesData = useMemo(() => topClientes(filteredRows), [filteredRows])
-  const opciones = useMemo(() => getOpciones(currentRows), [currentRows])
+  const opciones = useMemo(
+    () => getOpciones(currentRows, filters.lineaNegocio),
+    [currentRows, filters.lineaNegocio]
+  )
 
   const selectedMonth = MONTHS_CONFIG.find(m => m.gid === selectedGid)
   const tabLabel = selectedGid === 'anual' ? 'Total Acumulado Año' : (selectedMonth?.label ?? '')
@@ -79,6 +82,18 @@ export default function App() {
   const handleSelectMonth = (gid: string) => {
     setSelectedGid(gid)
     setFilters({ lineaNegocio: '__all__', comercial: '__all__' })
+  }
+
+  const handleFiltersChange = (newFilters: DashboardFilters) => {
+    if (newFilters.lineaNegocio !== filters.lineaNegocio) {
+      // Si cambia la línea, resetear comercial si ya no pertenece a ella
+      const newOpciones = getOpciones(currentRows, newFilters.lineaNegocio)
+      if (newFilters.comercial !== '__all__' && !newOpciones.comerciales.includes(newFilters.comercial)) {
+        setFilters({ ...newFilters, comercial: '__all__' })
+        return
+      }
+    }
+    setFilters(newFilters)
   }
 
   return (
@@ -114,7 +129,7 @@ export default function App() {
         <FiltersBar
           filters={filters}
           opciones={opciones}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           label={tabLabel}
           totalRows={currentRows.filter(r => !r.esSinAsignar).length}
           filteredRows={filteredRows.filter(r => !r.esSinAsignar).length}

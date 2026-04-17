@@ -14,6 +14,42 @@ const shortEur = (v: number) =>
 const COLORS = ['#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe']
 const TOP_N = 5
 
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: { payload: ComercialData }[]
+}
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  const pct = d.totalFacturacion > 0 ? (d.totalTransporte / d.totalFacturacion) * 100 : 0
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg text-xs min-w-[190px]">
+      <p className="font-semibold text-slate-800 mb-2 pb-1.5 border-b border-slate-100">{d.comercial}</p>
+      <div className="space-y-1.5">
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Total facturado</span>
+          <span className="font-medium text-slate-800">{eur(d.totalFacturacion)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Gastos transporte</span>
+          <span className="font-medium text-slate-800">{eur(d.totalTransporte)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Clientes</span>
+          <span className="font-medium text-slate-800">{d.count}</span>
+        </div>
+        <div className="flex justify-between gap-4 pt-1 border-t border-slate-100">
+          <span className="font-semibold text-slate-700">% Transp./Fact.</span>
+          <span className={`font-bold ${pct > 10 ? 'text-red-600' : 'text-teal-600'}`}>
+            {pct.toFixed(1)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   data: ComercialData[]
 }
@@ -31,7 +67,7 @@ export default function ComercialChart({ data }: Props) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="mb-3">
         <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-violet-500 rounded-full flex-shrink-0" />
           Gastos de Transporte por Comercial
@@ -85,16 +121,7 @@ export default function ComercialChart({ data }: Props) {
                 width={85}
                 tickFormatter={v => v.length > 13 ? v.slice(0, 11) + '…' : v}
               />
-              <Tooltip
-                formatter={(v: number) => [eur(v), 'Transporte']}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  fontSize: '12px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-                cursor={{ fill: '#f8fafc' }}
-              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
               <Bar dataKey="totalTransporte" radius={[0, 4, 4, 0]} maxBarSize={30}>
                 <LabelList
                   dataKey="totalTransporte"

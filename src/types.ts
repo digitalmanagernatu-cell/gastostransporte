@@ -23,8 +23,9 @@ export interface DashboardFilters {
 }
 
 export interface KPIs {
-  totalTransporte: number
+  totalPedidos: number
   totalFacturacion: number
+  totalTransporte: number
   pctMedio: number
   numClientes: number
   alertas: ClientRow[]
@@ -34,6 +35,8 @@ export interface KPIs {
 export interface AgenciaData {
   agencia: string
   total: number
+  clientes: number
+  natu: number
 }
 
 export interface LineaNegocioData {

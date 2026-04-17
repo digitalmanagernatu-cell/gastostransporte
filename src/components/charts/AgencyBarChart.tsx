@@ -11,6 +11,42 @@ const eur = (n: number) =>
 const shortEur = (v: number) =>
   v >= 1000 ? `${(v / 1000).toFixed(1)}k€` : `${v}€`
 
+interface TooltipEntry {
+  agencia: string
+  total: number
+  clientes: number
+  natu: number
+}
+
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: { payload: TooltipEntry }[]
+}
+
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg text-xs min-w-[190px]">
+      <p className="font-semibold text-slate-800 mb-2 pb-1.5 border-b border-slate-100">{d.agencia}</p>
+      <div className="space-y-1.5">
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Gastos clientes</span>
+          <span className="font-medium text-slate-800">{eur(d.clientes)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-slate-500">Gastos NATU</span>
+          <span className="font-medium text-slate-800">{eur(d.natu)}</span>
+        </div>
+        <div className="flex justify-between gap-4 pt-1 border-t border-slate-100">
+          <span className="font-semibold text-slate-700">Total</span>
+          <span className="font-bold text-slate-900">{eur(d.total)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   data: AgenciaData[]
 }
@@ -52,16 +88,7 @@ export default function AgencyBarChart({ data }: Props) {
                 tickLine={false}
                 width={35}
               />
-              <Tooltip
-                formatter={(v: number) => [eur(v), 'Importe']}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  fontSize: '12px',
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                }}
-                cursor={{ fill: '#f8fafc' }}
-              />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
               <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={60}>
                 <LabelList
                   dataKey="total"
