@@ -1,17 +1,23 @@
+import { useState } from 'react'
 import type { ClientRow } from '../types'
 
 const eur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+
+const COLLAPSED_COUNT = 3
 
 interface Props {
   alertas: ClientRow[]
 }
 
 export default function AlertsPanel({ alertas }: Props) {
+  const [expanded, setExpanded] = useState(false)
+
   if (alertas.length === 0) return null
 
-  // Sort by pct descending
   const sorted = [...alertas].sort((a, b) => b.pctTransporte - a.pctTransporte)
+  const visible = expanded ? sorted : sorted.slice(0, COLLAPSED_COUNT)
+  const hidden = sorted.length - COLLAPSED_COUNT
 
   return (
     <div className="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
@@ -31,9 +37,9 @@ export default function AlertsPanel({ alertas }: Props) {
 
       {/* Cards */}
       <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-        {sorted.map(r => {
+        {visible.map(r => {
           const pctVal = r.pctTransporte * 100
-          const barWidth = Math.min((pctVal / 30) * 100, 100) // 30% = full bar
+          const barWidth = Math.min((pctVal / 30) * 100, 100)
           return (
             <div
               key={`${r.codigoCliente}-${r.nombreCliente}`}
@@ -47,31 +53,49 @@ export default function AlertsPanel({ alertas }: Props) {
                     {r.codigoCliente && r.lineaNegocio && ' · '}
                     {r.lineaNegocio}
                   </p>
-                  {r.comercial && (
-                    <p className="text-xs text-slate-400">{r.comercial}</p>
-                  )}
+                  {r.comercial && <p className="text-xs text-slate-400">{r.comercial}</p>}
                 </div>
                 <span className="text-base font-bold text-red-600 whitespace-nowrap flex-shrink-0">
                   {pctVal.toFixed(1)}%
                 </span>
               </div>
-
               <div className="flex justify-between text-xs text-slate-500 mb-1.5">
                 <span>Transp: <span className="font-medium text-slate-700">{eur(r.totalTransporte)}</span></span>
                 <span>Fact: <span className="font-medium text-slate-700">{eur(r.baseImponible)}</span></span>
               </div>
-
-              {/* Progress bar */}
               <div className="bg-red-100 rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="bg-red-500 h-full rounded-full transition-all"
-                  style={{ width: `${barWidth}%` }}
-                />
+                <div className="bg-red-500 h-full rounded-full" style={{ width: `${barWidth}%` }} />
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* Ver más / Ver menos */}
+      {sorted.length > COLLAPSED_COUNT && (
+        <div className="px-4 pb-4 flex justify-center">
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-800 bg-red-100 hover:bg-red-200 px-4 py-2 rounded-lg transition-colors"
+          >
+            {expanded ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Ver menos
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Ver {hidden} más
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

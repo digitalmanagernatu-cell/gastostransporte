@@ -1,12 +1,15 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell, LabelList,
 } from 'recharts'
 import type { AgenciaData } from '../../types'
 import { AGENCY_COLORS } from '../../config'
 
 const eur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+
+const shortEur = (v: number) =>
+  v >= 1000 ? `${(v / 1000).toFixed(1)}k€` : `${v}€`
 
 interface Props {
   data: AgenciaData[]
@@ -20,7 +23,7 @@ export default function AgencyBarChart({ data }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
           <span className="w-2.5 h-2.5 bg-teal-500 rounded-full" />
-          Gasto por Agencia
+          Gasto de Transporte por Agencia
         </h3>
         {total > 0 && (
           <span className="text-xs text-slate-400">{eur(total)} total</span>
@@ -33,8 +36,8 @@ export default function AgencyBarChart({ data }: Props) {
         </div>
       ) : (
         <>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={data} margin={{ top: 24, right: 10, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="agencia"
@@ -60,6 +63,12 @@ export default function AgencyBarChart({ data }: Props) {
                 cursor={{ fill: '#f8fafc' }}
               />
               <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                <LabelList
+                  dataKey="total"
+                  position="top"
+                  formatter={(v: number) => shortEur(v)}
+                  style={{ fontSize: '9px', fill: '#475569', fontWeight: 600 }}
+                />
                 {data.map(entry => (
                   <Cell key={entry.agencia} fill={AGENCY_COLORS[entry.agencia] ?? '#94a3b8'} />
                 ))}
@@ -67,7 +76,7 @@ export default function AgencyBarChart({ data }: Props) {
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Mini legend with % */}
+          {/* Mini legend */}
           <div className="mt-3 grid grid-cols-2 gap-1.5">
             {data.map(d => (
               <div key={d.agencia} className="flex items-center justify-between text-xs px-2 py-1 bg-slate-50 rounded-lg">

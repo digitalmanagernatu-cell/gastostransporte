@@ -10,7 +10,7 @@ import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
 import AlertsPanel from './components/AlertsPanel'
-import DataTable from './components/DataTable'
+import TableModal from './components/TableModal'
 import AgencyBarChart from './components/charts/AgencyBarChart'
 import LineaNegocioChart from './components/charts/LineaNegocioChart'
 import ComercialChart from './components/charts/ComercialChart'
@@ -29,8 +29,8 @@ export default function App() {
     lineaNegocio: '__all__',
     comercial: '__all__',
   })
+  const [showTable, setShowTable] = useState(false)
 
-  // Fetch all months on mount
   useEffect(() => {
     const gids = MONTHS_CONFIG.map(m => m.gid)
     setLoadingGids(new Set(gids))
@@ -56,7 +56,6 @@ export default function App() {
   }, [])
 
   const isLoading = loadingGids.size > 0
-  const showAnual = MONTHS_CONFIG.length > 1
 
   const allRows = useMemo(() => Object.values(monthData).flat(), [monthData])
 
@@ -75,7 +74,7 @@ export default function App() {
   const opciones = useMemo(() => getOpciones(currentRows), [currentRows])
 
   const selectedMonth = MONTHS_CONFIG.find(m => m.gid === selectedGid)
-  const tabLabel = selectedGid === 'anual' ? 'Resumen Anual' : (selectedMonth?.label ?? '')
+  const tabLabel = selectedGid === 'anual' ? 'Total Acumulado Año' : (selectedMonth?.label ?? '')
 
   const handleSelectMonth = (gid: string) => {
     setSelectedGid(gid)
@@ -90,10 +89,11 @@ export default function App() {
         onSelectMonth={handleSelectMonth}
         isLoading={isLoading}
         lastUpdated={lastUpdated}
+        onShowTable={() => setShowTable(true)}
       />
 
       <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-5">
-        {/* Error messages */}
+        {/* Errors */}
         {Object.entries(errors).map(([gid, msg]) => {
           const month = MONTHS_CONFIG.find(m => m.gid === gid)
           return (
@@ -110,7 +110,7 @@ export default function App() {
           )
         })}
 
-        {/* Filters bar */}
+        {/* Filters */}
         <FiltersBar
           filters={filters}
           opciones={opciones}
@@ -120,31 +120,34 @@ export default function App() {
           filteredRows={filteredRows.filter(r => !r.esSinAsignar).length}
         />
 
-        {/* KPI cards */}
+        {/* KPIs */}
         <KPICards kpis={kpis} isLoading={isLoading} />
 
-        {/* Alerts */}
-        <AlertsPanel alertas={kpis.alertas} />
-
-        {/* Monthly trend (only in annual view with 2+ months) */}
-        {selectedGid === 'anual' && showAnual && (
+        {/* Monthly trend (annual view) */}
+        {selectedGid === 'anual' && MONTHS_CONFIG.length > 1 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <MonthlyTrendChart months={MONTHS_CONFIG} monthData={monthData} />
           </div>
         )}
 
-        {/* Charts grid */}
+        {/* Charts — row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <AgencyBarChart data={agenciaData} />
           <LineaNegocioChart data={lineaNegocioData} />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ComercialChart data={comercialData} />
-          <TopClientsChart data={topClientesData} />
+
+        {/* Charts — row 2: comercial smaller (1/3) + top clients (2/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-1">
+            <ComercialChart data={comercialData} />
+          </div>
+          <div className="lg:col-span-2">
+            <TopClientsChart data={topClientesData} />
+          </div>
         </div>
 
-        {/* Data table */}
-        <DataTable rows={filteredRows} isLoading={isLoading} />
+        {/* Alerts */}
+        <AlertsPanel alertas={kpis.alertas} />
 
         {/* Footer */}
         <footer className="text-center text-xs text-slate-400 pb-6">
@@ -154,6 +157,15 @@ export default function App() {
             : 'Cargando...'}
         </footer>
       </main>
+
+      {/* Table modal */}
+      {showTable && (
+        <TableModal
+          rows={filteredRows}
+          isLoading={isLoading}
+          onClose={() => setShowTable(false)}
+        />
+      )}
     </div>
   )
 }
