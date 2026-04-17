@@ -5,10 +5,11 @@ import {
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
 import type { ClientRow, DashboardFilters } from './types'
-import { MONTHS_CONFIG } from './config'
+import { MONTHS_CONFIG, type TransportRangeKey } from './config'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
+import ClientHealthCard from './components/ClientHealthCard'
 import AlertsPanel from './components/AlertsPanel'
 import TableModal from './components/TableModal'
 import AgencyBarChart from './components/charts/AgencyBarChart'
@@ -31,6 +32,7 @@ export default function App() {
   })
   const [showTable, setShowTable] = useState(false)
   const [tableTargetClient, setTableTargetClient] = useState<string | null>(null)
+  const [tableInitialRange, setTableInitialRange] = useState<TransportRangeKey | null>(null)
 
   useEffect(() => {
     const gids = MONTHS_CONFIG.map(m => m.gid)
@@ -103,6 +105,13 @@ export default function App() {
 
   const openTableForClient = (codigoCliente: string) => {
     setTableTargetClient(codigoCliente)
+    setTableInitialRange(null)
+    setShowTable(true)
+  }
+
+  const openTableForRange = (key: TransportRangeKey) => {
+    setTableTargetClient(null)
+    setTableInitialRange(key)
     setShowTable(true)
   }
 
@@ -147,6 +156,9 @@ export default function App() {
 
         {/* KPIs */}
         <KPICards kpis={kpis} isLoading={isLoading} />
+
+        {/* Client health ranges */}
+        <ClientHealthCard rows={filteredRows} onSelectRange={openTableForRange} />
 
         {/* Monthly trend (annual view) */}
         {selectedGid === 'anual' && MONTHS_CONFIG.length > 1 && (
@@ -200,8 +212,10 @@ export default function App() {
           onClose={() => {
             setShowTable(false)
             setTableTargetClient(null)
+            setTableInitialRange(null)
           }}
           targetClient={tableTargetClient}
+          initialRange={tableInitialRange}
         />
       )}
     </div>

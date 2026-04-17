@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import type { ClientRow } from '../types'
-import { AGENCIES } from '../config'
+import { AGENCIES, TRANSPORT_RANGES, type TransportRangeKey } from '../config'
 
 const eur = (n: number) =>
   n > 0
@@ -15,15 +15,17 @@ interface Props {
   rows: ClientRow[]
   isLoading: boolean
   targetClient?: string | null
+  initialRange?: TransportRangeKey | null
 }
 
-export default function DataTable({ rows, isLoading, targetClient }: Props) {
+export default function DataTable({ rows, isLoading, targetClient, initialRange }: Props) {
   const [showSinAsignar, setShowSinAsignar] = useState(true)
   const [sortKey, setSortKey] = useState<SortKey>('totalTransporte')
   const [sortAsc, setSortAsc] = useState(false)
   const [search, setSearch] = useState('')
   const [filterLinea, setFilterLinea] = useState('__all__')
   const [filterComercial, setFilterComercial] = useState('__all__')
+  const [filterRange, setFilterRange] = useState<TransportRangeKey | '__all__'>(initialRange ?? '__all__')
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
 
   useEffect(() => {
@@ -60,11 +62,14 @@ export default function DataTable({ rows, isLoading, targetClient }: Props) {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
+    const range = filterRange !== '__all__' ? TRANSPORT_RANGES.find(r => r.key === filterRange) : null
     return (showSinAsignar ? rows : rows.filter(r => !r.esSinAsignar))
       .filter(r => {
         if (q && !r.nombreCliente.toLowerCase().includes(q) && !r.codigoCliente.toLowerCase().includes(q)) return false
         if (filterLinea !== '__all__' && r.lineaNegocio !== filterLinea && !r.esSinAsignar) return false
         if (filterComercial !== '__all__' && r.comercial !== filterComercial) return false
+        if (range && !r.esSinAsignar && (r.pctTransporte < range.min || r.pctTransporte >= range.max)) return false
+        if (range && r.esSinAsignar) return false
         return true
       })
       .slice()
@@ -78,12 +83,13 @@ export default function DataTable({ rows, isLoading, targetClient }: Props) {
       })
   }, [rows, showSinAsignar, search, filterLinea, filterComercial, sortKey, sortAsc])
 
-  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__'
+  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__' || filterRange !== '__all__'
 
   const clearFilters = () => {
     setSearch('')
     setFilterLinea('__all__')
     setFilterComercial('__all__')
+    setFilterRange('__all__')
   }
 
   const toggleSort = (key: SortKey) => {
@@ -152,6 +158,13 @@ export default function DataTable({ rows, isLoading, targetClient }: Props) {
           <select value={filterComercial} onChange={e => setFilterComercial(e.target.value)} className={selectCls}>
             <option value="__all__">Todos los comerciales</option>
             {comerciales.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <select value={filterRange} onChange={e => setFilterRange(e.target.value as TransportRangeKey | '__all__')} className={selectCls}>
+            <option value="__all__">Todos los rangos</option>
+            {TRANSPORT_RANGES.map(r => (
+              <option key={r.key} value={r.key}>{r.label} ({r.description})</option>
+            ))}
           </select>
 
           {hasFilters && (

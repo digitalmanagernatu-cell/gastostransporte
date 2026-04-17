@@ -1,20 +1,24 @@
 import { useEffect } from 'react'
 import DataTable from './DataTable'
 import type { ClientRow } from '../types'
+import { TRANSPORT_RANGES, type TransportRangeKey } from '../config'
 
 interface Props {
   rows: ClientRow[]
   isLoading: boolean
   onClose: () => void
   targetClient?: string | null
+  initialRange?: TransportRangeKey | null
 }
 
-export default function TableModal({ rows, isLoading, onClose, targetClient }: Props) {
+export default function TableModal({ rows, isLoading, onClose, targetClient, initialRange }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  const rangeLabel = initialRange ? TRANSPORT_RANGES.find(r => r.key === initialRange)?.label : null
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
@@ -34,6 +38,7 @@ export default function TableModal({ rows, isLoading, onClose, targetClient }: P
               <h2 className="text-base font-semibold text-slate-800">Tabla de facturación completa</h2>
               <p className="text-xs text-slate-400">
                 {rows.filter(r => !r.esSinAsignar).length} clientes
+                {rangeLabel && ` · Filtrado: ${rangeLabel}`}
                 {targetClient && ' · Resaltando cliente seleccionado'}
                 {' · Pulsa Esc para cerrar'}
               </p>
@@ -52,7 +57,7 @@ export default function TableModal({ rows, isLoading, onClose, targetClient }: P
 
         {/* Table */}
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <DataTable rows={rows} isLoading={isLoading} targetClient={targetClient} />
+          <DataTable rows={rows} isLoading={isLoading} targetClient={targetClient} initialRange={initialRange} />
         </div>
       </div>
     </div>
