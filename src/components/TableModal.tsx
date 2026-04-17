@@ -9,9 +9,10 @@ interface Props {
   onClose: () => void
   targetClient?: string | null
   initialRange?: TransportRangeKey | null
+  initialSinAsignar?: boolean
 }
 
-export default function TableModal({ rows, isLoading, onClose, targetClient, initialRange }: Props) {
+export default function TableModal({ rows, isLoading, onClose, targetClient, initialRange, initialSinAsignar }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
@@ -38,6 +39,7 @@ export default function TableModal({ rows, isLoading, onClose, targetClient, ini
               <h2 className="text-base font-semibold text-slate-800">Tabla de facturación completa</h2>
               <p className="text-xs text-slate-400">
                 {rows.filter(r => !r.esSinAsignar).length} clientes
+                {initialSinAsignar && ` · Mostrando gastos sin asignación`}
                 {rangeLabel && ` · Filtrado: ${rangeLabel}`}
                 {targetClient && ' · Resaltando cliente seleccionado'}
                 {' · Pulsa Esc para cerrar'}
@@ -57,7 +59,7 @@ export default function TableModal({ rows, isLoading, onClose, targetClient, ini
 
         {/* Table */}
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <DataTable rows={rows} isLoading={isLoading} targetClient={targetClient} initialRange={initialRange} />
+          <DataTable rows={rows} isLoading={isLoading} targetClient={targetClient} initialRange={initialRange} initialSinAsignar={initialSinAsignar} />
         </div>
       </div>
     </div>

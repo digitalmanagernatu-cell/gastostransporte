@@ -16,9 +16,10 @@ interface Props {
   isLoading: boolean
   targetClient?: string | null
   initialRange?: TransportRangeKey | null
+  initialSinAsignar?: boolean
 }
 
-export default function DataTable({ rows, isLoading, targetClient, initialRange }: Props) {
+export default function DataTable({ rows, isLoading, targetClient, initialRange, initialSinAsignar }: Props) {
   const [showSinAsignar, setShowSinAsignar] = useState(true)
   const [sortKey, setSortKey] = useState<SortKey>('totalTransporte')
   const [sortAsc, setSortAsc] = useState(false)
@@ -26,6 +27,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange 
   const [filterLinea, setFilterLinea] = useState('__all__')
   const [filterComercial, setFilterComercial] = useState('__all__')
   const [filterRange, setFilterRange] = useState<TransportRangeKey | '__all__'>(initialRange ?? '__all__')
+  const [filterOnlySinAsignar, setFilterOnlySinAsignar] = useState(initialSinAsignar ?? false)
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
 
   useEffect(() => {
@@ -63,8 +65,10 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     const range = filterRange !== '__all__' ? TRANSPORT_RANGES.find(r => r.key === filterRange) : null
-    return (showSinAsignar ? rows : rows.filter(r => !r.esSinAsignar))
+    return rows
       .filter(r => {
+        if (filterOnlySinAsignar) return r.esSinAsignar
+        if (!showSinAsignar && r.esSinAsignar) return false
         if (q && !r.nombreCliente.toLowerCase().includes(q) && !r.codigoCliente.toLowerCase().includes(q)) return false
         if (filterLinea !== '__all__' && r.lineaNegocio !== filterLinea && !r.esSinAsignar) return false
         if (filterComercial !== '__all__' && r.comercial !== filterComercial) return false
@@ -81,15 +85,17 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange 
         }
         return sortAsc ? (av as number) - (bv as number) : (bv as number) - (av as number)
       })
-  }, [rows, showSinAsignar, search, filterLinea, filterComercial, sortKey, sortAsc])
+  }, [rows, showSinAsignar, filterOnlySinAsignar, search, filterLinea, filterComercial, filterRange, sortKey, sortAsc])
 
-  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__' || filterRange !== '__all__'
+  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__' || filterRange !== '__all__' || filterOnlySinAsignar
 
   const clearFilters = () => {
     setSearch('')
     setFilterLinea('__all__')
     setFilterComercial('__all__')
     setFilterRange('__all__')
+    setFilterOnlySinAsignar(false)
+    setShowSinAsignar(true)
   }
 
   const toggleSort = (key: SortKey) => {
@@ -113,15 +119,27 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange 
             Detalle por Cliente
           </h3>
           <div className="flex items-center gap-4 flex-wrap">
-            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showSinAsignar}
-                onChange={e => setShowSinAsignar(e.target.checked)}
-                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-              />
-              Mostrar "Sin Asignar"
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showSinAsignar && !filterOnlySinAsignar}
+                  disabled={filterOnlySinAsignar}
+                  onChange={e => setShowSinAsignar(e.target.checked)}
+                  className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 disabled:opacity-40"
+                />
+                Mostrar sin asignar
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-amber-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={filterOnlySinAsignar}
+                  onChange={e => setFilterOnlySinAsignar(e.target.checked)}
+                  className="rounded border-amber-300 text-amber-500 focus:ring-amber-400"
+                />
+                Solo sin asignar
+              </label>
+            </div>
             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
               {visible.length} registros
             </span>

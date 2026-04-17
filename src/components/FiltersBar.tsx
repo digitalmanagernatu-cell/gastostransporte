@@ -7,10 +7,17 @@ interface Props {
   label: string
   totalRows: number
   filteredRows: number
+  onViewSinAsignar?: () => void
 }
 
-export default function FiltersBar({ filters, opciones, onChange, label, totalRows, filteredRows }: Props) {
+export default function FiltersBar({ filters, opciones, onChange, label, totalRows, filteredRows, onViewSinAsignar }: Props) {
   const hasFilters = filters.lineaNegocio !== '__all__' || filters.comercial !== '__all__'
+
+  const clearFilters = () => onChange({
+    lineaNegocio: '__all__',
+    comercial: '__all__',
+    includeSinAsignar: true,
+  })
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 px-5 py-4">
@@ -60,9 +67,31 @@ export default function FiltersBar({ filters, opciones, onChange, label, totalRo
             </select>
           </div>
 
-          {hasFilters && (
+          {/* Sin asignar toggle */}
+          <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={filters.includeSinAsignar}
+                onChange={e => onChange({ ...filters, includeSinAsignar: e.target.checked })}
+                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              Incluir "Sin Asignar"
+            </label>
+            {onViewSinAsignar && (
+              <button
+                onClick={onViewSinAsignar}
+                className="text-xs text-slate-400 hover:text-teal-600 transition-colors whitespace-nowrap"
+                title="Ver detalle de gastos sin asignación"
+              >
+                Ver detalle →
+              </button>
+            )}
+          </div>
+
+          {(hasFilters || !filters.includeSinAsignar) && (
             <button
-              onClick={() => onChange({ lineaNegocio: '__all__', comercial: '__all__' })}
+              onClick={clearFilters}
               className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

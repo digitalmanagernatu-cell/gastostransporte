@@ -42,22 +42,42 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
   if (!rows) return []
 
   const result: ClientRow[] = []
+  let inSinAsignarBlock = false
 
   for (const row of rows) {
     const c = row.c ?? []
     const get = (i: number): unknown => (c[i] ?? null)?.v ?? null
 
-    const nombreCliente = String(get(1) ?? '').trim()
+    const rawCodigo = String(get(0) ?? '').trim()
+    const rawNombre = String(get(1) ?? '').trim()
+
+    // Detect the --- SIN ASIGNAR --- marker row
+    if (
+      rawCodigo.toUpperCase().includes('SIN ASIGNAR') ||
+      rawNombre.toUpperCase().includes('SIN ASIGNAR')
+    ) {
+      inSinAsignarBlock = true
+      continue
+    }
+
+    if (!inSinAsignarBlock) {
+      // Regular client rows: require a client name, skip totals
+      if (!rawNombre) continue
+      const upper = rawNombre.toUpperCase()
+      if (upper === 'TOTAL' || upper.startsWith('TOTAL ') || upper === 'TOTALES') continue
+    }
+
+    // Build display name; sin asignar rows may have empty col B
+    const nombreCliente = inSinAsignarBlock
+      ? (rawNombre || rawCodigo || 'Sin referencia')
+      : rawNombre
     if (!nombreCliente) continue
 
-    const upper = nombreCliente.toUpperCase()
-    if (upper === 'TOTAL' || upper.startsWith('TOTAL ') || upper === 'TOTALES') continue
-
-    const codigoCliente = String(get(0) ?? '').trim()
-    const comercial = String(get(2) ?? '').trim()
-    const lineaNegocio = String(get(3) ?? '').trim()
-    const baseImponible = parseNum(get(4))
-    const totalFacturas = parseNum(get(5))
+    const codigoCliente = rawCodigo
+    const comercial = inSinAsignarBlock ? '' : String(get(2) ?? '').trim()
+    const lineaNegocio = inSinAsignarBlock ? '' : String(get(3) ?? '').trim()
+    const baseImponible = inSinAsignarBlock ? 0 : parseNum(get(4))
+    const totalFacturas = inSinAsignarBlock ? 0 : parseNum(get(5))
 
     const agencias: Record<string, number> = {}
     AGENCIES.forEach((ag, i) => {
@@ -66,10 +86,6 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
 
     const totalTransporte = parseNum(get(14))
     const pctTransporte = baseImponible > 0 ? totalTransporte / baseImponible : 0
-
-    const esSinAsignar =
-      upper.includes('SIN ASIGNAR') ||
-      codigoCliente.toUpperCase().includes('SIN ASIGNAR')
 
     result.push({
       codigoCliente,
@@ -81,7 +97,7 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
       agencias,
       totalTransporte,
       pctTransporte,
-      esSinAsignar,
+      esSinAsignar: inSinAsignarBlock,
     })
   }
 

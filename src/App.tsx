@@ -29,10 +29,12 @@ export default function App() {
   const [filters, setFilters] = useState<DashboardFilters>({
     lineaNegocio: '__all__',
     comercial: '__all__',
+    includeSinAsignar: true,
   })
   const [showTable, setShowTable] = useState(false)
   const [tableTargetClient, setTableTargetClient] = useState<string | null>(null)
   const [tableInitialRange, setTableInitialRange] = useState<TransportRangeKey | null>(null)
+  const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
   useEffect(() => {
     const gids = MONTHS_CONFIG.map(m => m.gid)
@@ -84,7 +86,7 @@ export default function App() {
 
   const handleSelectMonth = (gid: string) => {
     setSelectedGid(gid)
-    setFilters({ lineaNegocio: '__all__', comercial: '__all__' })
+    setFilters({ lineaNegocio: '__all__', comercial: '__all__', includeSinAsignar: true })
   }
 
   const handleFiltersChange = (newFilters: DashboardFilters) => {
@@ -106,12 +108,21 @@ export default function App() {
   const openTableForClient = (codigoCliente: string) => {
     setTableTargetClient(codigoCliente)
     setTableInitialRange(null)
+    setTableInitialSinAsignar(false)
     setShowTable(true)
   }
 
   const openTableForRange = (key: TransportRangeKey) => {
     setTableTargetClient(null)
     setTableInitialRange(key)
+    setTableInitialSinAsignar(false)
+    setShowTable(true)
+  }
+
+  const openTableForSinAsignar = () => {
+    setTableTargetClient(null)
+    setTableInitialRange(null)
+    setTableInitialSinAsignar(true)
     setShowTable(true)
   }
 
@@ -152,6 +163,7 @@ export default function App() {
           label={tabLabel}
           totalRows={currentRows.filter(r => !r.esSinAsignar).length}
           filteredRows={filteredRows.filter(r => !r.esSinAsignar).length}
+          onViewSinAsignar={openTableForSinAsignar}
         />
 
         {/* KPIs */}
@@ -207,15 +219,17 @@ export default function App() {
       {/* Table modal */}
       {showTable && (
         <TableModal
-          rows={filteredRows}
+          rows={currentRows}
           isLoading={isLoading}
           onClose={() => {
             setShowTable(false)
             setTableTargetClient(null)
             setTableInitialRange(null)
+            setTableInitialSinAsignar(false)
           }}
           targetClient={tableTargetClient}
           initialRange={tableInitialRange}
+          initialSinAsignar={tableInitialSinAsignar}
         />
       )}
     </div>

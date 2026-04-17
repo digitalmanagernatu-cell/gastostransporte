@@ -3,6 +3,8 @@ import { AGENCIES, ALERT_THRESHOLD } from '../config'
 
 export function filtrar(rows: ClientRow[], f: DashboardFilters): ClientRow[] {
   return rows.filter(r => {
+    if (!f.includeSinAsignar && r.esSinAsignar) return false
+    if (r.esSinAsignar) return true // sin asignar rows skip linea/comercial filters
     if (f.lineaNegocio !== '__all__' && r.lineaNegocio !== f.lineaNegocio) return false
     if (f.comercial !== '__all__' && r.comercial !== f.comercial) return false
     return true

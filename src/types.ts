@@ -20,6 +20,7 @@ export interface MonthConfig {
 export interface DashboardFilters {
   lineaNegocio: string
   comercial: string
+  includeSinAsignar: boolean
 }
 
 export interface KPIs {
