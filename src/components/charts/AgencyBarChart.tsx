@@ -35,7 +35,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
           <span className="font-medium text-slate-800">{eur(d.clientes)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-slate-500">Gastos NATU</span>
+          <span className="text-slate-500">Gastos NATU (sin cruce/asignar)</span>
           <span className="font-medium text-slate-800">{eur(d.natu)}</span>
         </div>
         <div className="flex justify-between gap-4 pt-1 border-t border-slate-100">

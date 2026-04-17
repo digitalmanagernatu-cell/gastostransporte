@@ -8,9 +8,10 @@ const COLLAPSED_COUNT = 9
 
 interface Props {
   alertas: ClientRow[]
+  onClientClick?: (codigoCliente: string) => void
 }
 
-export default function AlertsPanel({ alertas }: Props) {
+export default function AlertsPanel({ alertas, onClientClick }: Props) {
   const [expanded, setExpanded] = useState(false)
 
   if (alertas.length === 0) return null
@@ -33,6 +34,9 @@ export default function AlertsPanel({ alertas }: Props) {
         <span className="ml-auto bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
           {alertas.length}
         </span>
+        {onClientClick && (
+          <span className="text-xs text-red-500 italic">Clic en tarjeta para ver detalle</span>
+        )}
       </div>
 
       {/* Cards */}
@@ -43,7 +47,10 @@ export default function AlertsPanel({ alertas }: Props) {
           return (
             <div
               key={`${r.codigoCliente}-${r.nombreCliente}`}
-              className="bg-white border border-red-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
+              onClick={() => onClientClick?.(r.codigoCliente)}
+              className={`bg-white border border-red-200 rounded-lg p-3 hover:shadow-md transition-all ${
+                onClientClick ? 'cursor-pointer hover:border-red-400 hover:bg-red-50' : ''
+              }`}
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0">
@@ -55,9 +62,14 @@ export default function AlertsPanel({ alertas }: Props) {
                   </p>
                   {r.comercial && <p className="text-xs text-slate-400">{r.comercial}</p>}
                 </div>
-                <span className="text-base font-bold text-red-600 whitespace-nowrap flex-shrink-0">
-                  {pctVal.toFixed(1)}%
-                </span>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-base font-bold text-red-600 whitespace-nowrap">
+                    {pctVal.toFixed(1)}%
+                  </span>
+                  {onClientClick && (
+                    <span className="text-xs text-slate-300 mt-0.5">Ver detalle →</span>
+                  )}
+                </div>
               </div>
               <div className="flex justify-between text-xs text-slate-500 mb-1.5">
                 <span>Transp: <span className="font-medium text-slate-700">{eur(r.totalTransporte)}</span></span>

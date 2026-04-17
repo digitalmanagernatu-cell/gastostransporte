@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ClientRow } from '../types'
 import { AGENCIES } from '../config'
 
@@ -14,12 +14,24 @@ type SortKey = 'nombreCliente' | 'totalTransporte' | 'pctTransporte' | 'baseImpo
 interface Props {
   rows: ClientRow[]
   isLoading: boolean
+  targetClient?: string | null
 }
 
-export default function DataTable({ rows, isLoading }: Props) {
+export default function DataTable({ rows, isLoading, targetClient }: Props) {
   const [showSinAsignar, setShowSinAsignar] = useState(true)
   const [sortKey, setSortKey] = useState<SortKey>('totalTransporte')
   const [sortAsc, setSortAsc] = useState(false)
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
+
+  // Scroll to target client when provided
+  useEffect(() => {
+    if (!targetClient) return
+    const timer = setTimeout(() => {
+      const el = rowRefs.current.get(targetClient)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [targetClient])
 
   const visible = (showSinAsignar ? rows : rows.filter(r => !r.esSinAsignar))
     .slice()
@@ -40,9 +52,7 @@ export default function DataTable({ rows, isLoading }: Props) {
   }
 
   const SortIcon = ({ k }: { k: SortKey }) => (
-    <span className="ml-1 opacity-50">
-      {sortKey === k ? (sortAsc ? '↑' : '↓') : '↕'}
-    </span>
+    <span className="ml-1 opacity-50">{sortKey === k ? (sortAsc ? '↑' : '↓') : '↕'}</span>
   )
 
   return (
@@ -79,6 +89,12 @@ export default function DataTable({ rows, isLoading }: Props) {
           <span className="w-3 h-3 bg-amber-50 rounded border border-amber-200" />
           Sin asignar
         </span>
+        {targetClient && (
+          <span className="flex items-center gap-1.5 text-blue-500 font-medium">
+            <span className="w-3 h-3 bg-blue-100 rounded border border-blue-400" />
+            Cliente seleccionado
+          </span>
+        )}
       </div>
 
       {/* Table */}
@@ -87,34 +103,26 @@ export default function DataTable({ rows, isLoading }: Props) {
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
               <th className="px-3 py-3 font-semibold text-slate-500 sticky left-0 bg-slate-50 z-10">Código</th>
-              <th
-                className="px-3 py-3 font-semibold text-slate-500 cursor-pointer hover:text-slate-700 select-none"
-                onClick={() => toggleSort('nombreCliente')}
-              >
+              <th className="px-3 py-3 font-semibold text-slate-500 cursor-pointer hover:text-slate-700 select-none"
+                onClick={() => toggleSort('nombreCliente')}>
                 Cliente <SortIcon k="nombreCliente" />
               </th>
               <th className="px-3 py-3 font-semibold text-slate-500">Comercial</th>
               <th className="px-3 py-3 font-semibold text-slate-500">Línea</th>
-              <th
-                className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
-                onClick={() => toggleSort('baseImponible')}
-              >
+              <th className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
+                onClick={() => toggleSort('baseImponible')}>
                 Facturación <SortIcon k="baseImponible" />
               </th>
               <th className="px-3 py-3 font-semibold text-slate-500 text-right">Facturas</th>
               {AGENCIES.map(ag => (
                 <th key={ag} className="px-3 py-3 font-semibold text-slate-400 text-right">{ag}</th>
               ))}
-              <th
-                className="px-3 py-3 font-semibold text-slate-700 text-right cursor-pointer hover:text-slate-900 select-none"
-                onClick={() => toggleSort('totalTransporte')}
-              >
+              <th className="px-3 py-3 font-semibold text-slate-700 text-right cursor-pointer hover:text-slate-900 select-none"
+                onClick={() => toggleSort('totalTransporte')}>
                 Total Transp. <SortIcon k="totalTransporte" />
               </th>
-              <th
-                className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
-                onClick={() => toggleSort('pctTransporte')}
-              >
+              <th className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
+                onClick={() => toggleSort('pctTransporte')}>
                 % Transp. <SortIcon k="pctTransporte" />
               </th>
             </tr>
@@ -125,21 +133,26 @@ export default function DataTable({ rows, isLoading }: Props) {
                 <tr key={i} className="border-b border-slate-100">
                   {Array.from({ length: 6 + AGENCIES.length }).map((_, j) => (
                     <td key={j} className="px-3 py-2.5">
-                      <div className="h-3 bg-slate-200 rounded animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                      <div className="h-3 bg-slate-200 rounded animate-pulse" />
                     </td>
                   ))}
                 </tr>
               ))
               : visible.map((r, i) => {
+                const isTarget = r.codigoCliente === targetClient
                 const isAlert = !r.esSinAsignar && r.pctTransporte > 0.10
-                const rowBg = r.esSinAsignar
+                const rowBg = isTarget
+                  ? 'bg-blue-50 hover:bg-blue-100'
+                  : r.esSinAsignar
                   ? 'bg-amber-50 hover:bg-amber-100'
                   : isAlert
                   ? 'bg-red-50 hover:bg-red-100'
                   : i % 2 === 0
                   ? 'bg-white hover:bg-slate-50'
                   : 'bg-slate-50 hover:bg-slate-100'
-                const stickyBg = r.esSinAsignar
+                const stickyBg = isTarget
+                  ? 'bg-blue-50'
+                  : r.esSinAsignar
                   ? 'bg-amber-50'
                   : isAlert
                   ? 'bg-red-50'
@@ -147,7 +160,14 @@ export default function DataTable({ rows, isLoading }: Props) {
                   ? 'bg-white'
                   : 'bg-slate-50'
                 return (
-                  <tr key={`${r.codigoCliente}-${i}`} className={`border-b border-slate-100 transition-colors ${rowBg}`}>
+                  <tr
+                    key={`${r.codigoCliente}-${i}`}
+                    ref={el => {
+                      if (el) rowRefs.current.set(r.codigoCliente, el)
+                      else rowRefs.current.delete(r.codigoCliente)
+                    }}
+                    className={`border-b transition-colors ${isTarget ? 'border-blue-300 ring-1 ring-inset ring-blue-300' : 'border-slate-100'} ${rowBg}`}
+                  >
                     <td className={`px-3 py-2 font-mono text-slate-400 sticky left-0 z-10 ${stickyBg}`}>
                       {r.codigoCliente || '—'}
                     </td>
@@ -163,9 +183,7 @@ export default function DataTable({ rows, isLoading }: Props) {
                         {(r.agencias[ag] ?? 0) > 0 ? eur(r.agencias[ag]) : '—'}
                       </td>
                     ))}
-                    <td className="px-3 py-2 text-right font-semibold text-slate-800">
-                      {eur(r.totalTransporte)}
-                    </td>
+                    <td className="px-3 py-2 text-right font-semibold text-slate-800">{eur(r.totalTransporte)}</td>
                     <td className={`px-3 py-2 text-right font-medium ${isAlert ? 'text-red-600' : 'text-slate-600'}`}>
                       {r.esSinAsignar ? '—' : pctFmt(r.pctTransporte)}
                     </td>

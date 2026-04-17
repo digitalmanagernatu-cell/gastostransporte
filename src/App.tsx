@@ -30,6 +30,7 @@ export default function App() {
     comercial: '__all__',
   })
   const [showTable, setShowTable] = useState(false)
+  const [tableTargetClient, setTableTargetClient] = useState<string | null>(null)
 
   useEffect(() => {
     const gids = MONTHS_CONFIG.map(m => m.gid)
@@ -86,7 +87,6 @@ export default function App() {
 
   const handleFiltersChange = (newFilters: DashboardFilters) => {
     if (newFilters.lineaNegocio !== filters.lineaNegocio) {
-      // Si cambia la línea, resetear comercial si ya no pertenece a ella
       const newOpciones = getOpciones(currentRows, newFilters.lineaNegocio)
       if (newFilters.comercial !== '__all__' && !newOpciones.comerciales.includes(newFilters.comercial)) {
         setFilters({ ...newFilters, comercial: '__all__' })
@@ -94,6 +94,16 @@ export default function App() {
       }
     }
     setFilters(newFilters)
+  }
+
+  const handleSelectLineaNegocio = (linea: string) => {
+    const newLinea = filters.lineaNegocio === linea ? '__all__' : linea
+    handleFiltersChange({ ...filters, lineaNegocio: newLinea })
+  }
+
+  const openTableForClient = (codigoCliente: string) => {
+    setTableTargetClient(codigoCliente)
+    setShowTable(true)
   }
 
   return (
@@ -148,7 +158,11 @@ export default function App() {
         {/* Charts — row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <AgencyBarChart data={agenciaData} />
-          <LineaNegocioChart data={lineaNegocioData} />
+          <LineaNegocioChart
+            data={lineaNegocioData}
+            selectedLinea={filters.lineaNegocio}
+            onSelectLinea={handleSelectLineaNegocio}
+          />
         </div>
 
         {/* Charts — row 2: comercial smaller (1/3) + top clients (2/3) */}
@@ -162,14 +176,19 @@ export default function App() {
         </div>
 
         {/* Alerts */}
-        <AlertsPanel alertas={kpis.alertas} />
+        <AlertsPanel alertas={kpis.alertas} onClientClick={openTableForClient} />
 
         {/* Footer */}
-        <footer className="text-center text-xs text-slate-400 pb-6">
-          Control de Gastos de Transporte · NATU ·{' '}
-          {lastUpdated
-            ? `Última actualización: ${lastUpdated.toLocaleString('es-ES')}`
-            : 'Cargando...'}
+        <footer className="text-center pb-8 space-y-1">
+          <p className="text-xs text-slate-400">
+            Control de Gastos de Transporte · NATU ·{' '}
+            {lastUpdated
+              ? `Última actualización: ${lastUpdated.toLocaleString('es-ES')}`
+              : 'Cargando...'}
+          </p>
+          <p className="text-xs text-slate-300 font-medium tracking-wide">
+            By Digital Manager
+          </p>
         </footer>
       </main>
 
@@ -178,7 +197,11 @@ export default function App() {
         <TableModal
           rows={filteredRows}
           isLoading={isLoading}
-          onClose={() => setShowTable(false)}
+          onClose={() => {
+            setShowTable(false)
+            setTableTargetClient(null)
+          }}
+          targetClient={tableTargetClient}
         />
       )}
     </div>

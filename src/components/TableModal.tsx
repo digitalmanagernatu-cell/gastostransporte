@@ -6,9 +6,10 @@ interface Props {
   rows: ClientRow[]
   isLoading: boolean
   onClose: () => void
+  targetClient?: string | null
 }
 
-export default function TableModal({ rows, isLoading, onClose }: Props) {
+export default function TableModal({ rows, isLoading, onClose, targetClient }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
@@ -17,13 +18,8 @@ export default function TableModal({ rows, isLoading, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
       <div className="relative flex flex-col h-full max-h-screen">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shadow-sm flex-shrink-0">
@@ -36,7 +32,11 @@ export default function TableModal({ rows, isLoading, onClose }: Props) {
             </div>
             <div>
               <h2 className="text-base font-semibold text-slate-800">Tabla de facturación completa</h2>
-              <p className="text-xs text-slate-400">{rows.filter(r => !r.esSinAsignar).length} clientes · Pulsa Esc para cerrar</p>
+              <p className="text-xs text-slate-400">
+                {rows.filter(r => !r.esSinAsignar).length} clientes
+                {targetClient && ' · Resaltando cliente seleccionado'}
+                {' · Pulsa Esc para cerrar'}
+              </p>
             </div>
           </div>
           <button
@@ -52,7 +52,7 @@ export default function TableModal({ rows, isLoading, onClose }: Props) {
 
         {/* Table */}
         <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <DataTable rows={rows} isLoading={isLoading} />
+          <DataTable rows={rows} isLoading={isLoading} targetClient={targetClient} />
         </div>
       </div>
     </div>

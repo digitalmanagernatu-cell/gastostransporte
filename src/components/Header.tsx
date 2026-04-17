@@ -1,4 +1,31 @@
+import { useState } from 'react'
 import type { MonthConfig } from '../types'
+
+function LogoOrIcon() {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0l2 2m2-2V8a1 1 0 00-1-1h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 0015 10.414V16" />
+        </svg>
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}logo.png`}
+      alt="Logo"
+      className="h-10 w-auto max-w-[120px] rounded-lg object-contain flex-shrink-0"
+      onError={() => setFailed(true)}
+    />
+  )
+}
 
 interface Props {
   months: readonly MonthConfig[]
@@ -16,14 +43,7 @@ export default function Header({ months, selectedGid, onSelectMonth, isLoading, 
         {/* Top bar */}
         <div className="flex items-center justify-between py-4 gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0l2 2m2-2V8a1 1 0 00-1-1h-2.586a1 1 0 00-.707.293l-2.414 2.414A1 1 0 0015 10.414V16" />
-              </svg>
-            </div>
+            <LogoOrIcon />
             <div className="min-w-0">
               <h1 className="text-lg font-bold leading-tight tracking-tight truncate">
                 Control de Gastos de Transporte
@@ -38,7 +58,6 @@ export default function Header({ months, selectedGid, onSelectMonth, isLoading, 
           </div>
 
           <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Ver tabla button */}
             <button
               onClick={onShowTable}
               className="flex items-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg transition-colors"
@@ -59,7 +78,7 @@ export default function Header({ months, selectedGid, onSelectMonth, isLoading, 
           </div>
         </div>
 
-        {/* Month tabs — always includes Total Acumulado Año */}
+        {/* Month tabs */}
         <div className="flex gap-1">
           <button
             onClick={() => onSelectMonth('anual')}
