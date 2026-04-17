@@ -65,9 +65,7 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
     })
 
     const totalTransporte = parseNum(get(14))
-    const rawPct = parseNum(get(15))
-    // Google Sheets almacena % como decimal (0.15 = 15%), pero a veces viene como 15
-    const pctTransporte = rawPct > 1 ? rawPct / 100 : rawPct
+    const pctTransporte = baseImponible > 0 ? totalTransporte / baseImponible : 0
 
     const esSinAsignar =
       upper.includes('SIN ASIGNAR') ||
