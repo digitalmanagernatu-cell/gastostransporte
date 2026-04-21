@@ -28,6 +28,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
   const [filterComercial, setFilterComercial] = useState('__all__')
   const [filterRange, setFilterRange] = useState<TransportRangeKey | '__all__'>(initialRange ?? '__all__')
   const [filterOnlySinAsignar, setFilterOnlySinAsignar] = useState(initialSinAsignar ?? false)
+  const [filterAgencia, setFilterAgencia] = useState('__all__')
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
         if (filterComercial !== '__all__' && r.comercial !== filterComercial) return false
         if (range && !r.esSinAsignar && (r.pctTransporte < range.min || r.pctTransporte >= range.max)) return false
         if (range && r.esSinAsignar) return false
+        if (filterAgencia !== '__all__' && !((r.agencias[filterAgencia] ?? 0) > 0)) return false
         return true
       })
       .slice()
@@ -85,15 +87,16 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
         }
         return sortAsc ? (av as number) - (bv as number) : (bv as number) - (av as number)
       })
-  }, [rows, showSinAsignar, filterOnlySinAsignar, search, filterLinea, filterComercial, filterRange, sortKey, sortAsc])
+  }, [rows, showSinAsignar, filterOnlySinAsignar, search, filterLinea, filterComercial, filterRange, filterAgencia, sortKey, sortAsc])
 
-  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__' || filterRange !== '__all__' || filterOnlySinAsignar
+  const hasFilters = search.trim() !== '' || filterLinea !== '__all__' || filterComercial !== '__all__' || filterRange !== '__all__' || filterAgencia !== '__all__' || filterOnlySinAsignar
 
   const clearFilters = () => {
     setSearch('')
     setFilterLinea('__all__')
     setFilterComercial('__all__')
     setFilterRange('__all__')
+    setFilterAgencia('__all__')
     setFilterOnlySinAsignar(false)
     setShowSinAsignar(true)
   }
@@ -183,6 +186,11 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
             {TRANSPORT_RANGES.map(r => (
               <option key={r.key} value={r.key}>{r.label} ({r.description})</option>
             ))}
+          </select>
+
+          <select value={filterAgencia} onChange={e => setFilterAgencia(e.target.value)} className={selectCls}>
+            <option value="__all__">Todas las agencias</option>
+            {AGENCIES.map(ag => <option key={ag} value={ag}>{ag}</option>)}
           </select>
 
           {hasFilters && (
