@@ -68,13 +68,18 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
     const range = filterRange !== '__all__' ? TRANSPORT_RANGES.find(r => r.key === filterRange) : null
     return rows
       .filter(r => {
-        if (filterOnlySinAsignar) return r.esSinAsignar
-        if (!showSinAsignar && r.esSinAsignar) return false
+        // Visibility based on sin asignar mode
+        if (filterOnlySinAsignar && !r.esSinAsignar) return false
+        if (!filterOnlySinAsignar && !showSinAsignar && r.esSinAsignar) return false
+        // Search applies to all modes
         if (q && !r.nombreCliente.toLowerCase().includes(q) && !r.codigoCliente.toLowerCase().includes(q)) return false
-        if (filterLinea !== '__all__' && r.lineaNegocio !== filterLinea && !r.esSinAsignar) return false
-        if (filterComercial !== '__all__' && r.comercial !== filterComercial) return false
-        if (range && !r.esSinAsignar && (r.pctTransporte < range.min || r.pctTransporte >= range.max)) return false
-        if (range && r.esSinAsignar) return false
+        // Línea, comercial and range only apply to non-sin-asignar rows
+        if (!r.esSinAsignar) {
+          if (filterLinea !== '__all__' && r.lineaNegocio !== filterLinea) return false
+          if (filterComercial !== '__all__' && r.comercial !== filterComercial) return false
+          if (range && (r.pctTransporte < range.min || r.pctTransporte >= range.max)) return false
+        }
+        // Agency filter applies to all rows
         if (filterAgencia !== '__all__' && !((r.agencias[filterAgencia] ?? 0) > 0)) return false
         return true
       })
