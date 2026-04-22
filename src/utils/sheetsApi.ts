@@ -69,9 +69,10 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
       if (!rawNombre) continue
     }
 
-    // Build display name; sin asignar rows may have empty col B
+    // Build display name
+    // For sin asignar rows col B contains SAP account codes, not client names — use col A only
     const nombreCliente = inSinAsignarBlock
-      ? (rawNombre || rawCodigo || 'Sin referencia')
+      ? (rawCodigo || 'Sin referencia')
       : rawNombre
     if (!nombreCliente) continue
 
