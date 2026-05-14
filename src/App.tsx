@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { fetchSheetData, discoverMonthSheets } from './utils/sheetsApi'
+import { fetchSheetData } from './utils/sheetsApi'
 import {
   filtrar, calcKPIs, byAgencia, byLineaNegocio,
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
 import type { ClientRow, DashboardFilters, MonthConfig } from './types'
-import { type TransportRangeKey } from './config'
+import { MONTHS_CONFIG, type TransportRangeKey } from './config'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
@@ -21,7 +21,7 @@ import MonthlyTrendChart from './components/charts/MonthlyTrendChart'
 export default function App() {
   const [months, setMonths] = useState<MonthConfig[]>([])
   const [monthData, setMonthData] = useState<Record<string, ClientRow[]>>({})
-  const [loadingGids, setLoadingGids] = useState<Set<string>>(new Set(['__discovering__']))
+  const [loadingGids, setLoadingGids] = useState<Set<string>>(new Set())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedGid, setSelectedGid] = useState<string>('anual')
@@ -36,39 +36,28 @@ export default function App() {
   const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
   useEffect(() => {
-    discoverMonthSheets()
-      .then(discovered => {
-        setMonths(discovered)
-        if (discovered.length === 0) {
-          setLoadingGids(new Set())
-          return
-        }
-        setSelectedGid(discovered[discovered.length - 1].gid)
-        setLoadingGids(new Set(discovered.map(m => m.gid)))
+    setLoadingGids(new Set(MONTHS_CONFIG.map(m => m.gid)))
 
-        return Promise.all(
-          discovered.map(m =>
-            fetchSheetData(m.gid)
-              .then(data => ({ month: m, data, error: null as string | null }))
-              .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
-          )
-        ).then(results => {
-          const newData: Record<string, ClientRow[]> = {}
-          const newErrors: Record<string, string> = {}
-          for (const r of results) {
-            if (r.error) newErrors[r.month.gid] = r.error
-            else newData[r.month.gid] = r.data
-          }
-          setMonthData(newData)
-          setErrors(newErrors)
-          setLoadingGids(new Set())
-          setLastUpdated(new Date())
-        })
-      })
-      .catch(err => {
-        setErrors({ '__discovery__': (err as Error).message })
-        setLoadingGids(new Set())
-      })
+    Promise.all(
+      MONTHS_CONFIG.map(m =>
+        fetchSheetData(m.gid)
+          .then(data => ({ month: m, data, error: null as string | null }))
+          .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
+      )
+    ).then(results => {
+      const newData: Record<string, ClientRow[]> = {}
+      const newErrors: Record<string, string> = {}
+      for (const r of results) {
+        if (r.error) newErrors[r.month.gid] = r.error
+        else newData[r.month.gid] = r.data
+      }
+      setMonthData(newData)
+      setErrors(newErrors)
+      setMonths([...MONTHS_CONFIG])
+      setSelectedGid(MONTHS_CONFIG[MONTHS_CONFIG.length - 1].gid)
+      setLoadingGids(new Set())
+      setLastUpdated(new Date())
+    })
   }, [])
 
   const isLoading = loadingGids.size > 0
@@ -152,7 +141,7 @@ export default function App() {
         {/* Errors */}
         {Object.entries(errors).map(([gid, msg]) => {
           const month = months.find(m => m.gid === gid)
-          const label = gid === '__discovery__' ? 'las hojas del spreadsheet' : (month?.label ?? gid)
+          const label = month?.label ?? gid
           return (
             <div key={gid} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
               <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
