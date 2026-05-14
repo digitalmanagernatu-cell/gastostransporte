@@ -1,5 +1,48 @@
 import { SPREADSHEET_ID, AGENCIES } from '../config'
-import type { ClientRow } from '../types'
+import type { ClientRow, MonthConfig } from '../types'
+
+const MONTH_ORDER: Record<string, number> = {
+  ENERO: 0, FEBRERO: 1, MARZO: 2, ABRIL: 3, MAYO: 4, JUNIO: 5,
+  JULIO: 6, AGOSTO: 7, SEPTIEMBRE: 8, OCTUBRE: 9, NOVIEMBRE: 10, DICIEMBRE: 11,
+}
+const MONTH_PATTERN = /^(ENERO|FEBRERO|MARZO|ABRIL|MAYO|JUNIO|JULIO|AGOSTO|SEPTIEMBRE|OCTUBRE|NOVIEMBRE|DICIEMBRE)\s+(\d{4})$/
+
+// Discovers all month sheet tabs by reading the v3 worksheets feed.
+// Each entry's visualizationfeed link contains the real numeric GID.
+export async function discoverMonthSheets(): Promise<MonthConfig[]> {
+  const url = `https://spreadsheets.google.com/feeds/worksheets/${SPREADSHEET_ID}/public/basic?alt=json`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`No se pudo obtener la lista de hojas: ${res.status}`)
+
+  const json = await res.json() as { feed?: { entry?: unknown[] } }
+  const entries = json.feed?.entry ?? []
+
+  type WithSort = MonthConfig & { _y: number; _m: number }
+  const found: WithSort[] = []
+
+  for (const raw of entries) {
+    const entry = raw as Record<string, unknown>
+    const sheetName = String((entry.title as Record<string, unknown>)?.['$t'] ?? '').trim()
+    const match = MONTH_PATTERN.exec(sheetName)
+    if (!match) continue
+
+    const links = (entry.link as Array<Record<string, string>>) ?? []
+    const vizLink = links.find(l => l.rel === 'http://schemas.google.com/spreadsheets/2006#visualizationfeed')
+    if (!vizLink) continue
+
+    const gidMatch = /[?&]gid=(\d+)/.exec(vizLink.href)
+    if (!gidMatch) continue
+
+    const monthUpper = match[1].toUpperCase()
+    const year = parseInt(match[2])
+    const label = monthUpper.charAt(0) + monthUpper.slice(1).toLowerCase() + ' ' + year
+
+    found.push({ label, sheetName, gid: gidMatch[1], _y: year, _m: MONTH_ORDER[monthUpper] ?? 0 })
+  }
+
+  found.sort((a, b) => a._y !== b._y ? a._y - b._y : a._m - b._m)
+  return found.map(({ label, sheetName, gid }) => ({ label, sheetName, gid }))
+}
 
 function parseNum(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0

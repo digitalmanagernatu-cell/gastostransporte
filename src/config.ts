@@ -1,9 +1,5 @@
 export const SPREADSHEET_ID = '1zQU3WQ_IT_0RN2Tb5XoTqVRqmkSdzUpeZPWRq3aD_f8'
 
-export const MONTHS_CONFIG = [
-  { label: 'Marzo 2026', sheetName: 'MARZO 2026', gid: '1431300331' },
-]
-
 export const AGENCIES = [
   'SEUR',
   'PALEMANIA',
