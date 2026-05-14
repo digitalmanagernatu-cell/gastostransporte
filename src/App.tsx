@@ -5,7 +5,7 @@ import {
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
 import type { ClientRow, DashboardFilters, MonthConfig } from './types'
-import { MESES_ES, type TransportRangeKey } from './config'
+import { MONTHS_CONFIG, type TransportRangeKey } from './config'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
@@ -17,15 +17,6 @@ import LineaNegocioChart from './components/charts/LineaNegocioChart'
 import ComercialChart from './components/charts/ComercialChart'
 import TopClientsChart from './components/charts/TopClientsChart'
 import MonthlyTrendChart from './components/charts/MonthlyTrendChart'
-
-function buildCandidates(): MonthConfig[] {
-  const year = new Date().getFullYear()
-  return MESES_ES.map(m => ({
-    label: m.charAt(0) + m.slice(1).toLowerCase() + ' ' + year,
-    sheetName: `${m} ${year}`,
-    gid: `${m} ${year}`,
-  }))
-}
 
 export default function App() {
   const [months, setMonths] = useState<MonthConfig[]>([])
@@ -45,39 +36,30 @@ export default function App() {
   const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
   useEffect(() => {
-    const candidates = buildCandidates()
-    setLoadingGids(new Set(candidates.map(c => c.gid)))
+    setLoadingGids(new Set(MONTHS_CONFIG.map(m => m.gid)))
 
     Promise.all(
-      candidates.map(m =>
+      MONTHS_CONFIG.map(m =>
         fetchSheetData(m.gid)
           .then(data => ({ month: m, data, error: null as string | null }))
-          .catch(err => ({ month: m, data: null as null, error: (err as Error).message }))
+          .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
       )
     ).then(results => {
       const newData: Record<string, ClientRow[]> = {}
       const newErrors: Record<string, string> = {}
-      const discovered: MonthConfig[] = []
 
       for (const r of results) {
-        if (r.data !== null) {
-          // Sheet exists (data may be empty array for a sheet with no rows yet)
-          newData[r.month.gid] = r.data
-          discovered.push(r.month)
-        } else if (r.error) {
-          // Real fetch error (network, permissions) — show banner
+        if (r.error) {
           newErrors[r.month.gid] = r.error
+        } else {
+          newData[r.month.gid] = r.data
         }
-        // data === null with no error → sheet simply doesn't exist yet, silently skip
       }
 
       setMonthData(newData)
       setErrors(newErrors)
-      setMonths(discovered)
-      // Default to the latest discovered month
-      if (discovered.length > 0) {
-        setSelectedGid(discovered[discovered.length - 1].gid)
-      }
+      setMonths([...MONTHS_CONFIG])
+      setSelectedGid(MONTHS_CONFIG[MONTHS_CONFIG.length - 1].gid)
       setLoadingGids(new Set())
       setLastUpdated(new Date())
     })

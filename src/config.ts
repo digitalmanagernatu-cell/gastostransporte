@@ -1,10 +1,8 @@
 export const SPREADSHEET_ID = '1zQU3WQ_IT_0RN2Tb5XoTqVRqmkSdzUpeZPWRq3aD_f8'
 
-// Spanish month names used for auto-discovery of sheet tabs
-export const MESES_ES = [
-  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
-] as const
+export const MONTHS_CONFIG = [
+  { label: 'Marzo 2026', sheetName: 'MARZO 2026', gid: '1431300331' },
+]
 
 export const AGENCIES = [
   'SEUR',

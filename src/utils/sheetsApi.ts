@@ -26,11 +26,8 @@ interface GvizResponse {
   table?: { rows: GvizRow[] }
 }
 
-// gid can be a numeric sheet ID ("1431300331") or a sheet name ("ABRIL 2026").
-// Returns null when the sheet does not exist (gviz status === 'error').
-export async function fetchSheetData(gid: string): Promise<ClientRow[] | null> {
-  const sheetParam = /^\d+$/.test(gid) ? `gid=${gid}` : `sheet=${encodeURIComponent(gid)}`
-  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&${sheetParam}`
+export async function fetchSheetData(gid: string): Promise<ClientRow[]> {
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`
 
   const res = await fetch(url)
   if (!res.ok) {
@@ -46,7 +43,7 @@ export async function fetchSheetData(gid: string): Promise<ClientRow[] | null> {
   if (start <= 0 || end < 0) throw new Error('Formato de respuesta inesperado del sheet.')
 
   const parsed: GvizResponse = JSON.parse(text.slice(start, end))
-  if (parsed.status === 'error' || !parsed.table) return null
+  if (!parsed.table) throw new Error('No se encontraron datos en el sheet.')
   const rows = parsed.table.rows
 
   const result: ClientRow[] = []
