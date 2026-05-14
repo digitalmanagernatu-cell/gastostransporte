@@ -4,8 +4,8 @@ import {
   filtrar, calcKPIs, byAgencia, byLineaNegocio,
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
-import type { ClientRow, DashboardFilters } from './types'
-import { MONTHS_CONFIG, type TransportRangeKey } from './config'
+import type { ClientRow, DashboardFilters, MonthConfig } from './types'
+import { MESES_ES, type TransportRangeKey } from './config'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
@@ -18,14 +18,22 @@ import ComercialChart from './components/charts/ComercialChart'
 import TopClientsChart from './components/charts/TopClientsChart'
 import MonthlyTrendChart from './components/charts/MonthlyTrendChart'
 
+function buildCandidates(): MonthConfig[] {
+  const year = new Date().getFullYear()
+  return MESES_ES.map(m => ({
+    label: m.charAt(0) + m.slice(1).toLowerCase() + ' ' + year,
+    sheetName: `${m} ${year}`,
+    gid: `${m} ${year}`,
+  }))
+}
+
 export default function App() {
+  const [months, setMonths] = useState<MonthConfig[]>([])
   const [monthData, setMonthData] = useState<Record<string, ClientRow[]>>({})
   const [loadingGids, setLoadingGids] = useState<Set<string>>(new Set())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [selectedGid, setSelectedGid] = useState<string>(
-    MONTHS_CONFIG.length > 0 ? MONTHS_CONFIG[0].gid : 'anual'
-  )
+  const [selectedGid, setSelectedGid] = useState<string>('anual')
   const [filters, setFilters] = useState<DashboardFilters>({
     lineaNegocio: '__all__',
     comercial: '__all__',
@@ -37,24 +45,39 @@ export default function App() {
   const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
   useEffect(() => {
-    const gids = MONTHS_CONFIG.map(m => m.gid)
-    setLoadingGids(new Set(gids))
+    const candidates = buildCandidates()
+    setLoadingGids(new Set(candidates.map(c => c.gid)))
 
     Promise.all(
-      MONTHS_CONFIG.map(m =>
+      candidates.map(m =>
         fetchSheetData(m.gid)
-          .then(data => ({ gid: m.gid, data, error: null }))
-          .catch(err => ({ gid: m.gid, data: null, error: (err as Error).message }))
+          .then(data => ({ month: m, data, error: null as string | null }))
+          .catch(err => ({ month: m, data: null as null, error: (err as Error).message }))
       )
     ).then(results => {
       const newData: Record<string, ClientRow[]> = {}
       const newErrors: Record<string, string> = {}
+      const discovered: MonthConfig[] = []
+
       for (const r of results) {
-        if (r.data !== null) newData[r.gid] = r.data
-        if (r.error) newErrors[r.gid] = r.error
+        if (r.data !== null) {
+          // Sheet exists (data may be empty array for a sheet with no rows yet)
+          newData[r.month.gid] = r.data
+          discovered.push(r.month)
+        } else if (r.error) {
+          // Real fetch error (network, permissions) — show banner
+          newErrors[r.month.gid] = r.error
+        }
+        // data === null with no error → sheet simply doesn't exist yet, silently skip
       }
+
       setMonthData(newData)
       setErrors(newErrors)
+      setMonths(discovered)
+      // Default to the latest discovered month
+      if (discovered.length > 0) {
+        setSelectedGid(discovered[discovered.length - 1].gid)
+      }
       setLoadingGids(new Set())
       setLastUpdated(new Date())
     })
@@ -81,7 +104,7 @@ export default function App() {
     [currentRows, filters.lineaNegocio]
   )
 
-  const selectedMonth = MONTHS_CONFIG.find(m => m.gid === selectedGid)
+  const selectedMonth = months.find(m => m.gid === selectedGid)
   const tabLabel = selectedGid === 'anual' ? 'Total Acumulado Año' : (selectedMonth?.label ?? '')
 
   const handleSelectMonth = (gid: string) => {
@@ -129,7 +152,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Header
-        months={MONTHS_CONFIG}
+        months={months}
         selectedGid={selectedGid}
         onSelectMonth={handleSelectMonth}
         isLoading={isLoading}
@@ -140,7 +163,7 @@ export default function App() {
       <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-5">
         {/* Errors */}
         {Object.entries(errors).map(([gid, msg]) => {
-          const month = MONTHS_CONFIG.find(m => m.gid === gid)
+          const month = months.find(m => m.gid === gid)
           return (
             <div key={gid} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
               <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,9 +196,9 @@ export default function App() {
         <ClientHealthCard rows={filteredRows} onSelectRange={openTableForRange} />
 
         {/* Monthly trend (annual view) */}
-        {selectedGid === 'anual' && MONTHS_CONFIG.length > 1 && (
+        {selectedGid === 'anual' && months.length > 1 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <MonthlyTrendChart months={MONTHS_CONFIG} monthData={monthData} />
+            <MonthlyTrendChart months={months} monthData={monthData} />
           </div>
         )}
 

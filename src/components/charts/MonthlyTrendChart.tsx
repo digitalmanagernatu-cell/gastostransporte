@@ -14,7 +14,7 @@ interface Props {
 
 export default function MonthlyTrendChart({ months, monthData }: Props) {
   const data = months.map(m => {
-    const rows = monthData[m.gid] ?? []
+    const rows = monthData[m.gid ?? m.sheetName] ?? []
     const asignados = rows.filter(r => !r.esSinAsignar)
     const totalTransporte = rows.reduce((s, r) => s + r.totalTransporte, 0)
     const totalFacturacion = asignados.reduce((s, r) => s + r.baseImponible, 0)
