@@ -7,3 +7,4 @@ dist-ssr
 .DS_Store
 *.tsbuildinfo
 !.env.example
+function.zip
