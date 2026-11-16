@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
-import { fetchSheetData } from './utils/sheetsApi'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
+import { api, type ApiMonth } from './utils/api'
+import { buildMonthRows, toMonthConfig } from './utils/buildMonth'
 import {
   filtrar, calcKPIs, byAgencia, byLineaNegocio,
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
 import type { ClientRow, DashboardFilters, MonthConfig } from './types'
 import type { TransportRangeKey } from './config'
-import { discoverMonths } from './utils/discoverMonths'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
@@ -19,11 +19,13 @@ import ComercialChart from './components/charts/ComercialChart'
 import TopClientsChart from './components/charts/TopClientsChart'
 import MonthlyTrendChart from './components/charts/MonthlyTrendChart'
 
+const UploadModal = lazy(() => import('./components/UploadModal'))
+
 export default function App() {
-  const [months, setMonths] = useState<MonthConfig[]>([])
-  const [monthData, setMonthData] = useState<Record<string, ClientRow[]>>({})
-  const [loadingGids, setLoadingGids] = useState<Set<string>>(new Set())
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [apiMonths, setApiMonths] = useState<ApiMonth[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [showUpload, setShowUpload] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [selectedGid, setSelectedGid] = useState<string>('anual')
   const [filters, setFilters] = useState<DashboardFilters>({
@@ -36,41 +38,38 @@ export default function App() {
   const [tableInitialRange, setTableInitialRange] = useState<TransportRangeKey | null>(null)
   const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
-  const [discoveryWarning, setDiscoveryWarning] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { months: found, warning } = await discoverMonths()
-      if (cancelled) return
-      setDiscoveryWarning(warning)
-      setLoadingGids(new Set(found.map(m => m.gid)))
-
-      const results = await Promise.all(
-        found.map(m =>
-          fetchSheetData(m.gid)
-            .then(data => ({ month: m, data, error: null as string | null }))
-            .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
-        )
-      )
-      if (cancelled) return
-      const newData: Record<string, ClientRow[]> = {}
-      const newErrors: Record<string, string> = {}
-      for (const r of results) {
-        if (r.error) newErrors[r.month.gid] = r.error
-        else newData[r.month.gid] = r.data
-      }
-      setMonthData(newData)
-      setErrors(newErrors)
-      setMonths(found)
-      setSelectedGid(found.length > 0 ? found[found.length - 1].gid : 'anual')
-      setLoadingGids(new Set())
+  const loadData = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const data = await api.getDashboard()
+      setApiMonths(data)
+      setLoadError(null)
       setLastUpdated(new Date())
-    })()
-    return () => { cancelled = true }
+      return data
+    } catch (err) {
+      setLoadError((err as Error).message)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
-  const isLoading = loadingGids.size > 0
+  useEffect(() => {
+    loadData().then(data => {
+      if (data && data.length > 0) setSelectedGid(String(data[data.length - 1].id))
+    })
+  }, [loadData])
+
+  const months: MonthConfig[] = useMemo(() => apiMonths.map(toMonthConfig), [apiMonths])
+  const monthData = useMemo(
+    () => Object.fromEntries(apiMonths.map(m => [String(m.id), buildMonthRows(m)])) as Record<string, ClientRow[]>,
+    [apiMonths]
+  )
+
+  // Si el mes seleccionado desaparece (p. ej. se borró), vuelve al acumulado
+  useEffect(() => {
+    if (selectedGid !== 'anual' && !isLoading && !monthData[selectedGid]) setSelectedGid('anual')
+  }, [selectedGid, monthData, isLoading])
 
   const allRows = useMemo(() => Object.values(monthData).flat(), [monthData])
 
@@ -145,42 +144,32 @@ export default function App() {
         isLoading={isLoading}
         lastUpdated={lastUpdated}
         onShowTable={() => setShowTable(true)}
+        onShowUpload={() => setShowUpload(true)}
       />
 
       <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-5">
-        {discoveryWarning && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
-            {discoveryWarning}
+        {loadError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm">
+            <p className="font-medium text-red-800">No se pudieron cargar los datos</p>
+            <p className="text-red-600 mt-0.5">{loadError}</p>
           </div>
         )}
 
-        {!isLoading && lastUpdated && months.length === 0 && (
+        {!isLoading && !loadError && months.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-600">
             <p className="font-medium text-slate-800">Todavía no hay meses cargados</p>
             <p className="mt-1">
-              Añade al Google Sheet una pestaña con el nombre del mes (p. ej. <b>SEPTIEMBRE 2026</b>)
-              y aparecerá aquí automáticamente.
+              Pulsa <b>Cargar mes</b>, elige mes y año y sube el Excel de facturación SAP.
+              Después podrás ir añadiendo las facturas de cada agencia.
             </p>
+            <button
+              onClick={() => setShowUpload(true)}
+              className="mt-3 bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium px-4 py-2 rounded-lg"
+            >
+              Cargar mes
+            </button>
           </div>
         )}
-
-        {/* Errors */}
-        {Object.entries(errors).map(([gid, msg]) => {
-          const month = months.find(m => m.gid === gid)
-          const label = month?.label ?? gid
-          return (
-            <div key={gid} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div className="text-sm">
-                <p className="font-medium text-red-800">No se pudo cargar {label}</p>
-                <p className="text-red-600 mt-0.5">{msg}</p>
-              </div>
-            </div>
-          )
-        })}
 
         {/* Filters */}
         <FiltersBar
@@ -242,6 +231,16 @@ export default function App() {
           </p>
         </footer>
       </main>
+
+      {showUpload && (
+        <Suspense fallback={null}>
+          <UploadModal
+            months={apiMonths}
+            onChanged={async () => { await loadData() }}
+            onClose={() => setShowUpload(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Table modal */}
       {showTable && (

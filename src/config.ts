@@ -1,13 +1,7 @@
-export const SPREADSHEET_ID = '1zQU3WQ_IT_0RN2Tb5XoTqVRqmkSdzUpeZPWRq3aD_f8'
-
-// Primer mes que se muestra en el dashboard. Las pestañas anteriores
-// (p. ej. MARZO 2026, ABRIL 2026) se ignoran aunque sigan en el sheet.
-export const START_MONTH = { year: 2026, month: 9 } // Septiembre 2026
-
-// Fallback: solo se usa si no hay VITE_SHEETS_API_KEY o la Sheets API falla.
-// Con API key, las pestañas "MES AAAA" se detectan automáticamente (utils/discoverMonths.ts).
-// Formato: { label: 'Septiembre 2026', sheetName: 'SEPTIEMBRE 2026', gid: '<gid de la URL>' }
-export const MONTHS_CONFIG: { label: string; sheetName: string; gid: string }[] = []
+// Base de datos (Neon, proyecto "gastos-transporte"). Son URLs públicas: las lecturas
+// son abiertas y las escrituras exigen la contraseña de carga (se valida en la BD).
+export const DATA_API_URL = 'https://ep-billowing-meadow-baerj1s7.apirest.c-8.eu-central-1.aws.neon.tech/neondb/rest/v1'
+export const AUTH_URL = 'https://ep-billowing-meadow-baerj1s7.neonauth.c-8.eu-central-1.aws.neon.tech/neondb/auth'
 
 export const AGENCIES = [
   'SEUR',
