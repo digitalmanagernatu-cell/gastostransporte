@@ -1,5 +1,7 @@
 export const SPREADSHEET_ID = '1zQU3WQ_IT_0RN2Tb5XoTqVRqmkSdzUpeZPWRq3aD_f8'
 
+// Fallback: solo se usa si no hay VITE_SHEETS_API_KEY o la Sheets API falla.
+// Con API key, las pestañas "MES AAAA" se detectan automáticamente (utils/discoverMonths.ts).
 export const MONTHS_CONFIG = [
   { label: 'Marzo 2026',  sheetName: 'MARZO 2026',  gid: '1431300331' },
   { label: 'Abril 2026',  sheetName: 'ABRIL 2026',   gid: '1320821302' },

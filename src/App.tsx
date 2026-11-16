@@ -5,7 +5,8 @@ import {
   byComercial, topClientes, getOpciones,
 } from './utils/dataUtils'
 import type { ClientRow, DashboardFilters, MonthConfig } from './types'
-import { MONTHS_CONFIG, type TransportRangeKey } from './config'
+import type { TransportRangeKey } from './config'
+import { discoverMonths } from './utils/discoverMonths'
 import Header from './components/Header'
 import FiltersBar from './components/FiltersBar'
 import KPICards from './components/KPICards'
@@ -35,16 +36,24 @@ export default function App() {
   const [tableInitialRange, setTableInitialRange] = useState<TransportRangeKey | null>(null)
   const [tableInitialSinAsignar, setTableInitialSinAsignar] = useState(false)
 
-  useEffect(() => {
-    setLoadingGids(new Set(MONTHS_CONFIG.map(m => m.gid)))
+  const [discoveryWarning, setDiscoveryWarning] = useState<string | null>(null)
 
-    Promise.all(
-      MONTHS_CONFIG.map(m =>
-        fetchSheetData(m.gid)
-          .then(data => ({ month: m, data, error: null as string | null }))
-          .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const { months: found, warning } = await discoverMonths()
+      if (cancelled) return
+      setDiscoveryWarning(warning)
+      setLoadingGids(new Set(found.map(m => m.gid)))
+
+      const results = await Promise.all(
+        found.map(m =>
+          fetchSheetData(m.gid)
+            .then(data => ({ month: m, data, error: null as string | null }))
+            .catch(err => ({ month: m, data: [] as ClientRow[], error: (err as Error).message }))
+        )
       )
-    ).then(results => {
+      if (cancelled) return
       const newData: Record<string, ClientRow[]> = {}
       const newErrors: Record<string, string> = {}
       for (const r of results) {
@@ -53,11 +62,12 @@ export default function App() {
       }
       setMonthData(newData)
       setErrors(newErrors)
-      setMonths([...MONTHS_CONFIG])
-      setSelectedGid(MONTHS_CONFIG[MONTHS_CONFIG.length - 1].gid)
+      setMonths(found)
+      setSelectedGid(found.length > 0 ? found[found.length - 1].gid : 'anual')
       setLoadingGids(new Set())
       setLastUpdated(new Date())
-    })
+    })()
+    return () => { cancelled = true }
   }, [])
 
   const isLoading = loadingGids.size > 0
@@ -138,6 +148,12 @@ export default function App() {
       />
 
       <main className="max-w-screen-2xl mx-auto px-4 py-6 space-y-5">
+        {discoveryWarning && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+            {discoveryWarning}
+          </div>
+        )}
+
         {/* Errors */}
         {Object.entries(errors).map(([gid, msg]) => {
           const month = months.find(m => m.gid === gid)
