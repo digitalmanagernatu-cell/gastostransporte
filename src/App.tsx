@@ -154,6 +154,16 @@ export default function App() {
           </div>
         )}
 
+        {!isLoading && lastUpdated && months.length === 0 && (
+          <div className="bg-white border border-slate-200 rounded-xl p-6 text-center text-sm text-slate-600">
+            <p className="font-medium text-slate-800">Todavía no hay meses cargados</p>
+            <p className="mt-1">
+              Añade al Google Sheet una pestaña con el nombre del mes (p. ej. <b>SEPTIEMBRE 2026</b>)
+              y aparecerá aquí automáticamente.
+            </p>
+          </div>
+        )}
+
         {/* Errors */}
         {Object.entries(errors).map(([gid, msg]) => {
           const month = months.find(m => m.gid === gid)

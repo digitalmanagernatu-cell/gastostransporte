@@ -1,4 +1,4 @@
-import { SPREADSHEET_ID, MONTHS_CONFIG } from '../config'
+import { SPREADSHEET_ID, MONTHS_CONFIG, START_MONTH } from '../config'
 import type { MonthConfig } from '../types'
 
 const MESES = [
@@ -6,6 +6,8 @@ const MESES = [
   'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE',
 ]
 const MONTH_RE = new RegExp(`^(${MESES.join('|')}|SETIEMBRE)\\s+(\\d{4})$`)
+
+const START_ORDER = START_MONTH.year * 12 + (START_MONTH.month - 1)
 
 interface SheetsApiResponse {
   sheets?: { properties?: { title?: string; sheetId?: number } }[]
@@ -46,10 +48,9 @@ export async function discoverMonths(): Promise<{ months: MonthConfig[]; warning
         typeof p?.title === 'string' && typeof p?.sheetId === 'number')
       .map(p => toMonthConfig(p.title, p.sheetId))
       .filter((m): m is MonthConfig & { order: number } => m !== null)
+      .filter(m => m.order >= START_ORDER)
       .sort((a, b) => a.order - b.order)
       .map(({ order: _order, ...m }) => m)
-
-    if (found.length === 0) throw new Error('no se encontró ninguna pestaña con formato "MES AAAA"')
     return { months: found, warning: null }
   } catch (err) {
     console.warn('[discoverMonths] usando MONTHS_CONFIG:', err)

@@ -1,11 +1,13 @@
 export const SPREADSHEET_ID = '1zQU3WQ_IT_0RN2Tb5XoTqVRqmkSdzUpeZPWRq3aD_f8'
 
+// Primer mes que se muestra en el dashboard. Las pestañas anteriores
+// (p. ej. MARZO 2026, ABRIL 2026) se ignoran aunque sigan en el sheet.
+export const START_MONTH = { year: 2026, month: 9 } // Septiembre 2026
+
 // Fallback: solo se usa si no hay VITE_SHEETS_API_KEY o la Sheets API falla.
 // Con API key, las pestañas "MES AAAA" se detectan automáticamente (utils/discoverMonths.ts).
-export const MONTHS_CONFIG = [
-  { label: 'Marzo 2026',  sheetName: 'MARZO 2026',  gid: '1431300331' },
-  { label: 'Abril 2026',  sheetName: 'ABRIL 2026',   gid: '1320821302' },
-]
+// Formato: { label: 'Septiembre 2026', sheetName: 'SEPTIEMBRE 2026', gid: '<gid de la URL>' }
+export const MONTHS_CONFIG: { label: string; sheetName: string; gid: string }[] = []
 
 export const AGENCIES = [
   'SEUR',
