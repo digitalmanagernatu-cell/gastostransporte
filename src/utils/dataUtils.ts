@@ -14,7 +14,8 @@ export function filtrar(rows: ClientRow[], f: DashboardFilters): ClientRow[] {
 export function calcKPIs(rows: ClientRow[]): KPIs {
   const asignados = rows.filter(r => !r.esSinAsignar)
   const sinAsignar = rows.filter(r => r.esSinAsignar)
-  const totalTransporteSA = sinAsignar.reduce((s, r) => s + r.totalTransporte, 0)
+  const totalTransporteSA = sinAsignar.filter(r => !r.esNoImputable).reduce((s, r) => s + r.totalTransporte, 0)
+  const totalNoImputable = sinAsignar.filter(r => r.esNoImputable).reduce((s, r) => s + r.totalTransporte, 0)
   const totalTransporte = rows.reduce((s, r) => s + r.totalTransporte, 0)
   const totalFacturacion = asignados.reduce((s, r) => s + r.baseImponible, 0)
   const totalPedidos = asignados.reduce((s, r) => s + r.totalFacturas, 0)
@@ -28,6 +29,7 @@ export function calcKPIs(rows: ClientRow[]): KPIs {
     numClientes: asignados.length,
     alertas,
     totalTransporteSA,
+    totalNoImputable,
   }
 }
 

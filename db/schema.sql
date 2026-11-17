@@ -123,7 +123,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, private, pg_temp AS 
 DECLARE v_id int; v_count int; v_total numeric;
 BEGIN
   PERFORM private.assert_password(p_password);
-  IF upper(p_agency) NOT IN ('SEUR','PALEMANIA','TRANSAHER','REDUR','NACEX','DHL','DHL_EXPORT','CORREOS') THEN RAISE EXCEPTION 'Agencia no válida: %', p_agency; END IF;
+  IF upper(p_agency) NOT IN ('SEUR','PALEMANIA','TRANSAHER','REDUR','NACEX','DHL','DHL_EXPORT','CORREOS','OTROS') THEN RAISE EXCEPTION 'Agencia no válida: %', p_agency; END IF;
   IF NOT EXISTS (SELECT 1 FROM months WHERE id = p_month_id) THEN RAISE EXCEPTION 'El mes no existe'; END IF;
   IF jsonb_typeof(p_lines) <> 'array' OR jsonb_array_length(p_lines) = 0 THEN RAISE EXCEPTION 'La factura no tiene líneas con importe'; END IF;
   INSERT INTO invoices (month_id, agency, filename, invoice_number)

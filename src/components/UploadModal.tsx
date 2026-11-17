@@ -73,13 +73,15 @@ export default function UploadModal({ months, onChanged, onClose }: Props) {
                     tab === t ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  {t === 'SAP' ? '📊 Facturación (SAP)' : t.replace('_', ' ')}
+                  {t === 'SAP' ? '📊 Facturación (SAP)' : t === 'OTROS' ? '➕ Otros transportistas' : t.replace('_', ' ')}
                 </button>
               ))}
             </div>
             <div className="p-6">
               {tab === 'SAP'
                 ? <SapTab months={months} password={password} onChanged={onChanged} />
+                : tab === 'OTROS'
+                ? <OtrosTab months={months} password={password} onChanged={onChanged} />
                 : <AgencyTab key={tab} agency={tab} months={months} password={password} onChanged={onChanged} />}
             </div>
             <div className="px-6 pb-4 text-right">
@@ -487,6 +489,124 @@ function AgencyTab({ agency, months, password, onChanged }: { agency: string; mo
                 <button
                   onClick={async () => {
                     if (!confirm(`¿Borrar ${inv.filename}?`)) return
+                    try { await api.deleteInvoice(password, inv.id); await onChanged() } catch (e) { alert((e as Error).message) }
+                  }}
+                  className="text-xs text-red-500 hover:text-red-700 flex-shrink-0"
+                >
+                  Borrar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Otros transportistas (sin desglose por cliente) ─────────────────────────
+
+function OtrosTab({ months, password, onChanged }: { months: ApiMonth[]; password: string; onChanged: () => Promise<void> }) {
+  const [monthId, setMonthId] = useState<number | null>(months.length ? months[months.length - 1].id : null)
+  const [proveedor, setProveedor] = useState('')
+  const [numero, setNumero] = useState('')
+  const [importe, setImporte] = useState('')
+  const [concepto, setConcepto] = useState('')
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'warn' | 'error'; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const month = months.find(m => m.id === monthId) ?? null
+  const uploaded = month?.invoices.filter(i => i.agency === 'OTROS') ?? []
+  const totalMes = uploaded.reduce((s, i) => s + i.total, 0)
+  const proveedores = [...new Set(months.flatMap(m => m.invoices.filter(i => i.agency === 'OTROS').map(i => i.filename)))].sort()
+  const amount = Math.round(parseFloat(importe.replace(/\./g, '').replace(',', '.')) * 100) / 100
+
+  if (months.length === 0) {
+    return <Notice kind="warn">Primero crea el mes en la pestaña «Facturación (SAP)».</Notice>
+  }
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!monthId || !proveedor.trim() || !Number.isFinite(amount) || amount === 0) return
+    if (uploaded.some(u => u.filename === proveedor.trim() && (u.invoice_number ?? '') === numero.trim()) &&
+        !confirm('Ya hay una factura de este proveedor con ese número en este mes. ¿Añadirla igualmente?')) return
+    setBusy(true); setMsg(null)
+    try {
+      await api.addInvoice(password, monthId, 'OTROS', proveedor.trim(), numero.trim(), [{
+        client_code: '', reference: proveedor.trim(), reference_original: concepto.trim(),
+        agency_invoice: numero.trim(), amount,
+      }])
+      await onChanged()
+      setMsg({ kind: 'ok', text: `✅ Añadida factura de ${proveedor.trim()} (${eur(amount)}) a ${month ? monthLabel(month) : ''}` })
+      setNumero(''); setImporte(''); setConcepto('')
+    } catch (err) { setMsg({ kind: 'error', text: (err as Error).message }) } finally { setBusy(false) }
+  }
+
+  const input = 'w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500'
+
+  return (
+    <div className="space-y-4">
+      <Notice kind="warn">
+        Para facturas pequeñas de otros transportistas que no desglosan por cliente. Suman al <b>gasto total de transporte</b> del mes,
+        pero <b>no se imputan a ningún cliente</b> ni cuentan como «Sin asignar»: aparecen aparte como «Otros transportistas · no imputable».
+      </Notice>
+
+      <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="text-sm">
+          <span className="block text-slate-600 mb-1">Mes</span>
+          <select value={monthId ?? ''} onChange={e => setMonthId(+e.target.value)} className={input}>
+            {[...months].reverse().map(m => <option key={m.id} value={m.id}>{monthLabel(m)}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="block text-slate-600 mb-1">Proveedor de transporte *</span>
+          <input list="otros-proveedores" value={proveedor} onChange={e => setProveedor(e.target.value)} className={input} placeholder="p. ej. Mensajería López" />
+          <datalist id="otros-proveedores">{proveedores.map(p => <option key={p} value={p} />)}</datalist>
+        </label>
+        <label className="text-sm">
+          <span className="block text-slate-600 mb-1">Nº de factura</span>
+          <input value={numero} onChange={e => setNumero(e.target.value)} className={input} />
+        </label>
+        <label className="text-sm">
+          <span className="block text-slate-600 mb-1">Importe sin IVA (€) *</span>
+          <input inputMode="decimal" value={importe} onChange={e => setImporte(e.target.value)} className={input} placeholder="0,00" />
+        </label>
+        <label className="text-sm sm:col-span-2">
+          <span className="block text-slate-600 mb-1">Concepto (opcional)</span>
+          <input value={concepto} onChange={e => setConcepto(e.target.value)} className={input} placeholder="p. ej. portes urgentes semana 38" />
+        </label>
+        <div className="sm:col-span-2 flex justify-end">
+          <button
+            disabled={busy || !proveedor.trim() || !Number.isFinite(amount) || amount === 0}
+            className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg"
+          >
+            {busy ? 'Guardando…' : `Añadir a ${month ? monthLabel(month) : ''}`}
+          </button>
+        </div>
+      </form>
+
+      {msg && <Notice kind={msg.kind}>{msg.text}</Notice>}
+
+      <div className="pt-4 border-t border-slate-100">
+        <p className="text-sm font-medium text-slate-700 mb-2">
+          Otros transportistas en {month ? monthLabel(month) : ''}
+          {uploaded.length > 0 && <span className="font-normal text-slate-400"> · total {eur(totalMes)}</span>}
+        </p>
+        {uploaded.length === 0 ? (
+          <p className="text-sm text-slate-400">Ninguna todavía.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 text-sm">
+            {uploaded.map(inv => (
+              <li key={inv.id} className="flex items-center justify-between py-2 gap-3">
+                <div className="min-w-0">
+                  <p className="text-slate-800 truncate">{inv.filename} · <b>{eur(inv.total)}</b></p>
+                  <p className="text-xs text-slate-400">
+                    {inv.invoice_number ? `Factura ${inv.invoice_number} · ` : ''}añadida {fmtDate(inv.uploaded_at)}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!confirm(`¿Borrar la factura de ${inv.filename} (${eur(inv.total)})?`)) return
                     try { await api.deleteInvoice(password, inv.id); await onChanged() } catch (e) { alert((e as Error).message) }
                   }}
                   className="text-xs text-red-500 hover:text-red-700 flex-shrink-0"

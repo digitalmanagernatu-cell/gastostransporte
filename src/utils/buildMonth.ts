@@ -76,6 +76,24 @@ export function buildMonthRows(m: ApiMonth): ClientRow[] {
   const sinAsignar = new Map<string, ClientRow>()
 
   for (const l of m.lines) {
+    // Otros transportistas: gasto general, no se intenta imputar a cliente
+    if (l.agency === 'OTROS') {
+      const prov = l.reference || 'Otros transportistas'
+      const key = `OTROS||${prov}`
+      let o = sinAsignar.get(key)
+      if (!o) {
+        o = {
+          codigoCliente: prov,
+          nombreCliente: 'Otros transportistas · no imputable',
+          comercial: '', lineaNegocio: '', baseImponible: 0, totalFacturas: 0,
+          agencias: emptyAgencies(), totalTransporte: 0, pctTransporte: 0,
+          esSinAsignar: true, esNoImputable: true,
+        }
+        sinAsignar.set(key, o)
+      }
+      o.agencias.OTROS += l.amount
+      continue
+    }
     const clientCode = match(l.client_code) ?? match(l.reference)
     const client = clientCode ? clients.get(clientCode) : undefined
     if (client) {

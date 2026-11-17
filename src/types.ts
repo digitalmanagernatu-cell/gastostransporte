@@ -9,6 +9,8 @@ export interface ClientRow {
   totalTransporte: number
   pctTransporte: number
   esSinAsignar: boolean
+  /** Gasto de «otros transportistas»: contabilizado en el total pero no imputable a ningún cliente */
+  esNoImputable?: boolean
 }
 
 export interface MonthConfig {
@@ -31,6 +33,7 @@ export interface KPIs {
   numClientes: number
   alertas: ClientRow[]
   totalTransporteSA: number
+  totalNoImputable: number
 }
 
 export interface AgenciaData {

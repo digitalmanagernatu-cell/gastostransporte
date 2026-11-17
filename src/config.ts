@@ -12,7 +12,11 @@ export const AGENCIES = [
   'DHL',
   'DHL_EXPORT',
   'CORREOS',
+  'OTROS', // otros transportistas sin desglose por cliente (no imputable)
 ] as const
+
+/** Nombre a mostrar de cada agencia (la clave interna no cambia) */
+export const agencyLabel = (a: string) => (a === 'OTROS' ? 'OTROS TRANSP.' : a.replace('_', ' '))
 
 export const ALERT_THRESHOLD = 0.10 // 10%
 
@@ -33,6 +37,7 @@ export const AGENCY_COLORS: Record<string, string> = {
   DHL:        '#ec4899',
   DHL_EXPORT: '#06b6d4',
   CORREOS:    '#f97316',
+  OTROS:      '#94a3b8',
 }
 
 export const LINEA_NEGOCIO_COLORS = [

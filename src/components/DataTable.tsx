@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import type { ClientRow } from '../types'
-import { AGENCIES, TRANSPORT_RANGES, type TransportRangeKey } from '../config'
+import { AGENCIES, TRANSPORT_RANGES, agencyLabel, type TransportRangeKey } from '../config'
 
 const eur = (n: number) =>
   n > 0
@@ -195,7 +195,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
 
           <select value={filterAgencia} onChange={e => setFilterAgencia(e.target.value)} className={selectCls}>
             <option value="__all__">Todas las agencias</option>
-            {AGENCIES.map(ag => <option key={ag} value={ag}>{ag}</option>)}
+            {AGENCIES.map(ag => <option key={ag} value={ag}>{agencyLabel(ag)}</option>)}
           </select>
 
           {hasFilters && (
@@ -242,7 +242,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
               </th>
               <th className="px-3 py-3 font-semibold text-slate-500 text-right">Facturas</th>
               {AGENCIES.map(ag => (
-                <th key={ag} className="px-3 py-3 font-semibold text-slate-400 text-right">{ag}</th>
+                <th key={ag} className="px-3 py-3 font-semibold text-slate-400 text-right">{agencyLabel(ag)}</th>
               ))}
               <th className="px-3 py-3 font-semibold text-slate-700 text-right cursor-pointer hover:text-slate-900 select-none"
                 onClick={() => toggleSort('totalTransporte')}>
@@ -278,6 +278,8 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
                 const isAlert = !r.esSinAsignar && r.pctTransporte > 0.10
                 const rowBg = isTarget
                   ? 'bg-blue-50 hover:bg-blue-100'
+                  : r.esNoImputable
+                  ? 'bg-slate-100 hover:bg-slate-200'
                   : r.esSinAsignar
                   ? 'bg-amber-50 hover:bg-amber-100'
                   : isAlert
@@ -287,6 +289,8 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
                   : 'bg-slate-50 hover:bg-slate-100'
                 const stickyBg = isTarget
                   ? 'bg-blue-50'
+                  : r.esNoImputable
+                  ? 'bg-slate-100'
                   : r.esSinAsignar
                   ? 'bg-amber-50'
                   : isAlert
@@ -307,7 +311,9 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
                       {r.codigoCliente || '—'}
                     </td>
                     <td className="px-3 py-2 font-medium text-slate-800 max-w-[180px]">
-                      <span className="block truncate" title={r.nombreCliente}>{r.nombreCliente}</span>
+                      {r.esNoImputable
+                        ? <span className="inline-block text-[11px] font-medium bg-slate-200 text-slate-600 rounded px-1.5 py-0.5">Otros transportistas · no imputable</span>
+                        : <span className="block truncate" title={r.nombreCliente}>{r.nombreCliente}</span>}
                     </td>
                     <td className="px-3 py-2 text-slate-600">{r.comercial || '—'}</td>
                     <td className="px-3 py-2 text-slate-600">{r.lineaNegocio || '—'}</td>

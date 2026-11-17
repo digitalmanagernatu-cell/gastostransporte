@@ -3,7 +3,7 @@ import {
   ResponsiveContainer, Cell, LabelList,
 } from 'recharts'
 import type { AgenciaData } from '../../types'
-import { AGENCY_COLORS } from '../../config'
+import { AGENCY_COLORS, agencyLabel } from '../../config'
 
 const eur = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
@@ -28,7 +28,16 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   const d = payload[0].payload
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-lg text-xs min-w-[190px]">
-      <p className="font-semibold text-slate-800 mb-2 pb-1.5 border-b border-slate-100">{d.agencia}</p>
+      <p className="font-semibold text-slate-800 mb-2 pb-1.5 border-b border-slate-100">{agencyLabel(d.agencia)}</p>
+      {d.agencia === 'OTROS' ? (
+        <div className="space-y-1.5">
+          <p className="text-slate-500">Otros transportistas · contabilizado, no imputable a clientes</p>
+          <div className="flex justify-between gap-4 pt-1 border-t border-slate-100">
+            <span className="font-semibold text-slate-700">Total</span>
+            <span className="font-bold text-slate-900">{eur(d.total)}</span>
+          </div>
+        </div>
+      ) : (
       <div className="space-y-1.5">
         <div className="flex justify-between gap-4">
           <span className="text-slate-500">Gastos clientes</span>
@@ -43,6 +52,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
           <span className="font-bold text-slate-900">{eur(d.total)}</span>
         </div>
       </div>
+      )}
     </div>
   )
 }
@@ -77,6 +87,7 @@ export default function AgencyBarChart({ data }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="agencia"
+                tickFormatter={agencyLabel}
                 tick={{ fontSize: 10, fill: '#94a3b8' }}
                 axisLine={false}
                 tickLine={false}
@@ -112,7 +123,7 @@ export default function AgencyBarChart({ data }: Props) {
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: AGENCY_COLORS[d.agencia] ?? '#94a3b8' }}
                   />
-                  <span className="text-slate-600 font-medium truncate">{d.agencia}</span>
+                  <span className="text-slate-600 font-medium truncate">{agencyLabel(d.agencia)}</span>
                 </div>
                 <span className="text-slate-400 flex-shrink-0 ml-2">
                   {total > 0 ? ((d.total / total) * 100).toFixed(0) + '%' : '0%'}

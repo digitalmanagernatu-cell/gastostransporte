@@ -86,7 +86,10 @@ export default function KPICards({ kpis, isLoading }: Props) {
       <Card
         title="Gastos Totales Transporte"
         value={eur(kpis.totalTransporte)}
-        sub={kpis.totalTransporteSA > 0 ? `NATU (sin asignar): ${eur(kpis.totalTransporteSA)}` : undefined}
+        sub={[
+          kpis.totalTransporteSA > 0 ? `Sin asignar: ${eur(kpis.totalTransporteSA)}` : '',
+          kpis.totalNoImputable > 0 ? `Otros transp. (no imputable): ${eur(kpis.totalNoImputable)}` : '',
+        ].filter(Boolean).join(' · ') || undefined}
         borderColor="border-teal-500"
         isLoading={loading}
         icon={
