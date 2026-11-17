@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AGENCIES } from '../config'
+import FolderImportTab from './FolderImportTab'
 import { api, type ApiMonth, type BillingRowInput, type InvoiceLineInput } from '../utils/api'
 import { buildMatcher, MONTH_NAMES, monthLabel } from '../utils/buildMonth'
 import {
@@ -24,7 +25,7 @@ interface Props {
   onClose: () => void
 }
 
-type Tab = 'SAP' | (typeof AGENCIES)[number]
+type Tab = 'SAP' | 'CARPETA' | (typeof AGENCIES)[number]
 
 export default function UploadModal({ months, onChanged, onClose }: Props) {
   const [password, setPassword] = useState(readPw)
@@ -47,7 +48,7 @@ export default function UploadModal({ months, onChanged, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
       <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-8">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-base font-semibold text-slate-800">Cargar mes</h2>
@@ -65,7 +66,7 @@ export default function UploadModal({ months, onChanged, onClose }: Props) {
         ) : (
           <>
             <div className="flex flex-wrap gap-1 px-6 pt-4 border-b border-slate-200">
-              {(['SAP', ...AGENCIES] as Tab[]).map(t => (
+              {(['SAP', 'CARPETA', ...AGENCIES] as Tab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -73,13 +74,15 @@ export default function UploadModal({ months, onChanged, onClose }: Props) {
                     tab === t ? 'border-teal-600 text-teal-700 bg-teal-50' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  {t === 'SAP' ? '📊 Facturación (SAP)' : t === 'OTROS' ? '➕ Otros transportistas' : t.replace('_', ' ')}
+                  {t === 'SAP' ? '📊 Facturación (SAP)' : t === 'CARPETA' ? '📁 Desde SharePoint' : t === 'OTROS' ? '➕ Otros transportistas' : t.replace('_', ' ')}
                 </button>
               ))}
             </div>
             <div className="p-6">
               {tab === 'SAP'
                 ? <SapTab months={months} password={password} onChanged={onChanged} />
+                : tab === 'CARPETA'
+                ? <FolderImportTab months={months} password={password} onChanged={onChanged} />
                 : tab === 'OTROS'
                 ? <OtrosTab months={months} password={password} onChanged={onChanged} />
                 : <AgencyTab key={tab} agency={tab} months={months} password={password} onChanged={onChanged} />}
@@ -147,6 +150,20 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
 
   const existing = months.find(m => m.year === year && m.month === month)
   const rows: BillingRowInput[] = useMemo(() => (grid && layout ? parseSap(grid, layout) : []), [grid, layout])
+  // Envíos ya cargados de este mes cuyo cliente no está en el nuevo Excel (export incompleto)
+  const faltan = useMemo(() => {
+    if (!existing || rows.length === 0) return null
+    const nuevos = new Set(rows.map(r => r.client_code.replace(/[\s\-./#]/g, '').toUpperCase()))
+    const by = new Map<string, number>()
+    for (const l of existing.lines) {
+      const c = (l.client_code ?? '').replace(/[\s\-./#]/g, '').toUpperCase()
+      if (/^CF?\d{3,}$/.test(c) && !nuevos.has(c)) by.set(c, (by.get(c) ?? 0) + l.amount)
+    }
+    if (by.size === 0) return null
+    const top = [...by.entries()].sort((a, b) => b[1] - a[1])
+    return { n: by.size, total: top.reduce((s, [, v]) => s + v, 0), ejemplos: top.slice(0, 6).map(([c, v]) => `${c} (${eur(v)})`) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing, rows])
   const stats = useMemo(() => {
     const clients = new Set(rows.map(r => r.client_code))
     const activos = new Set(rows.filter(r => r.base_imponible !== 0 || r.num_facturas > 0).map(r => r.client_code))
@@ -214,6 +231,13 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
           />
         </label>
       </div>
+
+      {faltan && (
+        <Notice kind="error">
+          ⚠️ <b>{faltan.n} clientes con envíos este mes no están en este Excel</b> ({eur(faltan.total)} de transporte): {faltan.ejemplos.join(', ')}…
+          ¿Se exportó con algún filtro? Si lo guardas así, ese transporte irá a «Sin asignar» (salvo los clientes que el sistema recuerde de otros meses).
+        </Notice>
+      )}
 
       {existing && (
         <Notice kind="warn">

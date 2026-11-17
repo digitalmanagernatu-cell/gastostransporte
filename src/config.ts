@@ -2,6 +2,8 @@
 // son abiertas y las escrituras exigen la contraseña de carga (se valida en la BD).
 export const DATA_API_URL = 'https://ep-billowing-meadow-baerj1s7.apirest.c-8.eu-central-1.aws.neon.tech/neondb/rest/v1'
 export const AUTH_URL = 'https://ep-billowing-meadow-baerj1s7.neonauth.c-8.eu-central-1.aws.neon.tech/neondb/auth'
+// Función de Neon que lee carpetas compartidas de SharePoint (functions/sharepoint)
+export const SHAREPOINT_FN_URL = 'https://br-steep-fog-ba030t8w-sharepoint.compute.c-8.eu-central-1.aws.neon.tech/'
 
 export const AGENCIES = [
   'SEUR',

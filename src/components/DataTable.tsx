@@ -229,36 +229,35 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
         <table className="w-full text-xs whitespace-nowrap">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-left">
-              <th className="px-3 py-3 font-semibold text-slate-500 sticky left-0 bg-slate-50 z-10">Código</th>
+              <th className="px-2 py-3 font-semibold text-slate-500 sticky left-0 bg-slate-50 z-10 w-[84px] max-w-[84px]">Código</th>
               <th className="px-3 py-3 font-semibold text-slate-500 cursor-pointer hover:text-slate-700 select-none"
                 onClick={() => toggleSort('nombreCliente')}>
                 Cliente <SortIcon k="nombreCliente" />
               </th>
-              <th className="px-3 py-3 font-semibold text-slate-500">Comercial</th>
               <th className="px-3 py-3 font-semibold text-slate-500">Línea</th>
               <th className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
                 onClick={() => toggleSort('baseImponible')}>
                 Facturación <SortIcon k="baseImponible" />
               </th>
               <th className="px-3 py-3 font-semibold text-slate-500 text-right">Facturas</th>
-              {AGENCIES.map(ag => (
-                <th key={ag} className="px-3 py-3 font-semibold text-slate-400 text-right">{agencyLabel(ag)}</th>
-              ))}
+              <th className="px-3 py-3 font-bold text-slate-800 text-right cursor-pointer hover:text-slate-900 select-none bg-slate-100"
+                onClick={() => toggleSort('pctTransporte')}>
+                % Transp. <SortIcon k="pctTransporte" />
+              </th>
               <th className="px-3 py-3 font-semibold text-slate-700 text-right cursor-pointer hover:text-slate-900 select-none"
                 onClick={() => toggleSort('totalTransporte')}>
                 Total Transp. <SortIcon k="totalTransporte" />
               </th>
-              <th className="px-3 py-3 font-semibold text-slate-500 text-right cursor-pointer hover:text-slate-700 select-none"
-                onClick={() => toggleSort('pctTransporte')}>
-                % Transp. <SortIcon k="pctTransporte" />
-              </th>
+              {AGENCIES.map(ag => (
+                <th key={ag} className="px-3 py-3 font-semibold text-slate-400 text-right">{agencyLabel(ag)}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {isLoading && visible.length === 0
               ? Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="border-b border-slate-100">
-                  {Array.from({ length: 6 + AGENCIES.length }).map((_, j) => (
+                  {Array.from({ length: 7 + AGENCIES.length }).map((_, j) => (
                     <td key={j} className="px-3 py-2.5">
                       <div className="h-3 bg-slate-200 rounded animate-pulse" />
                     </td>
@@ -268,7 +267,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
               : visible.length === 0
               ? (
                 <tr>
-                  <td colSpan={6 + AGENCIES.length + 2} className="px-5 py-10 text-center text-sm text-slate-400">
+                  <td colSpan={7 + AGENCIES.length} className="px-5 py-10 text-center text-sm text-slate-400">
                     No hay resultados para los filtros aplicados
                   </td>
                 </tr>
@@ -307,7 +306,7 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
                     }}
                     className={`border-b transition-colors ${isTarget ? 'border-blue-300 ring-1 ring-inset ring-blue-300' : 'border-slate-100'} ${rowBg}`}
                   >
-                    <td className={`px-3 py-2 font-mono text-slate-400 sticky left-0 z-10 ${stickyBg}`}>
+                    <td className={`px-2 py-2 font-mono text-slate-400 sticky left-0 z-10 w-[84px] max-w-[84px] truncate ${stickyBg}`} title={r.codigoCliente}>
                       {r.codigoCliente || '—'}
                     </td>
                     <td className="px-3 py-2 font-medium text-slate-800 max-w-[180px]">
@@ -315,19 +314,18 @@ export default function DataTable({ rows, isLoading, targetClient, initialRange,
                         ? <span className="inline-block text-[11px] font-medium bg-slate-200 text-slate-600 rounded px-1.5 py-0.5">Otros transportistas · no imputable</span>
                         : <span className="block truncate" title={r.nombreCliente}>{r.nombreCliente}</span>}
                     </td>
-                    <td className="px-3 py-2 text-slate-600">{r.comercial || '—'}</td>
                     <td className="px-3 py-2 text-slate-600">{r.lineaNegocio || '—'}</td>
                     <td className="px-3 py-2 text-right text-slate-700">{eur(r.baseImponible)}</td>
                     <td className="px-3 py-2 text-right text-slate-500">{r.totalFacturas > 0 ? r.totalFacturas : '—'}</td>
+                    <td className={`px-3 py-2 text-right font-bold bg-slate-50/60 ${isAlert ? 'text-red-600' : 'text-slate-800'}`}>
+                      {r.esSinAsignar ? '—' : pctFmt(r.pctTransporte)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold text-slate-800">{eur(r.totalTransporte)}</td>
                     {AGENCIES.map(ag => (
                       <td key={ag} className="px-3 py-2 text-right text-slate-500">
                         {(r.agencias[ag] ?? 0) > 0 ? eur(r.agencias[ag]) : '—'}
                       </td>
                     ))}
-                    <td className="px-3 py-2 text-right font-semibold text-slate-800">{eur(r.totalTransporte)}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${isAlert ? 'text-red-600' : 'text-slate-600'}`}>
-                      {r.esSinAsignar ? '—' : pctFmt(r.pctTransporte)}
-                    </td>
                   </tr>
                 )
               })}

@@ -46,7 +46,17 @@ export function buildMatcher(billing: ApiBillingRow[]) {
 
 const emptyAgencies = () => Object.fromEntries(AGENCIES.map(a => [a, 0])) as Record<string, number>
 
-export function buildMonthRows(m: ApiMonth): ClientRow[] {
+/** Memoria de clientes: último dato conocido (comercial, línea…) de cada cliente en cualquier mes. */
+export type ClientMemory = Map<string, ApiBillingRow>
+
+export function buildClientMemory(months: ApiMonth[]): ClientMemory {
+  const mem: ClientMemory = new Map()
+  for (const m of [...months].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month)))
+    for (const b of m.billing) mem.set(norm(b.client_code), b)
+  return mem
+}
+
+export function buildMonthRows(m: ApiMonth, memory?: ClientMemory): ClientRow[] {
   const clients = new Map<string, ClientRow>()
   for (const b of m.billing) {
     const key = b.client_code
@@ -95,7 +105,20 @@ export function buildMonthRows(m: ApiMonth): ClientRow[] {
       continue
     }
     const clientCode = match(l.client_code) ?? match(l.reference)
-    const client = clientCode ? clients.get(clientCode) : undefined
+    let client = clientCode ? clients.get(clientCode) : undefined
+    // Cliente que no está en el SAP de este mes pero sí en otro → se usa su último dato conocido
+    const remembered = !client && memory ? (memory.get(norm(l.client_code)) ?? memory.get(norm(l.reference))) : undefined
+    if (remembered) {
+      client = clients.get(remembered.client_code)
+      if (!client) {
+        client = {
+          codigoCliente: remembered.client_code, nombreCliente: remembered.client_name || remembered.client_code,
+          comercial: remembered.comercial, lineaNegocio: remembered.linea_negocio,
+          baseImponible: 0, totalFacturas: 0, agencias: emptyAgencies(), totalTransporte: 0, pctTransporte: 0, esSinAsignar: false,
+        }
+        clients.set(remembered.client_code, client)
+      }
+    }
     if (client) {
       client.agencias[l.agency] = (client.agencias[l.agency] ?? 0) + l.amount
       continue

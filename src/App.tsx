@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { api, type ApiMonth } from './utils/api'
-import { buildMonthRows, toMonthConfig } from './utils/buildMonth'
+import { buildClientMemory, buildMonthRows, toMonthConfig } from './utils/buildMonth'
 import {
   filtrar, calcKPIs, byAgencia, byLineaNegocio,
   byComercial, topClientes, getOpciones,
@@ -62,7 +62,10 @@ export default function App() {
 
   const months: MonthConfig[] = useMemo(() => apiMonths.map(toMonthConfig), [apiMonths])
   const monthData = useMemo(
-    () => Object.fromEntries(apiMonths.map(m => [String(m.id), buildMonthRows(m)])) as Record<string, ClientRow[]>,
+    () => {
+      const memory = buildClientMemory(apiMonths)
+      return Object.fromEntries(apiMonths.map(m => [String(m.id), buildMonthRows(m, memory)])) as Record<string, ClientRow[]>
+    },
     [apiMonths]
   )
 
