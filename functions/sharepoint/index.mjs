@@ -5,7 +5,7 @@
 // Solo se permiten enlaces de natuaromatic-my.sharepoint.com y exige la contraseña de carga.
 
 const HOST = 'natuaromatic-my.sharepoint.com'
-const ORIGINS = ['https://digitalmanagernatu-cell.github.io', 'http://localhost:5173', 'http://localhost:4173']
+const ORIGINS = ['https://transporte.natulaboratories.es', 'https://digitalmanagernatu-cell.github.io', 'http://localhost:5173', 'http://localhost:4173']
 const MAX_FILES = 300
 
 const cors = req => {
