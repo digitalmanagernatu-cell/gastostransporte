@@ -211,6 +211,7 @@ function cleanRef(raw: unknown, allowBareNumber = false): string {
   const r = s(raw).toUpperCase()
   if (!r) return ''
   if (CLIENT_RE.test(r)) return r
+  if (/^CF?\d{3,}[A-Z]$/.test(r)) return r.slice(0, -1) // Transaher: C0212H → C0212
   if (DOC_RE.test(r)) return r.replace(/^(FV|PV)/i, '')
   if (allowBareNumber && /^\d{6,}$/.test(r)) return r
   return ''
