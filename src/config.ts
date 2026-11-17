@@ -12,6 +12,7 @@ export const AGENCIES = [
   'DHL',
   'DHL_EXPORT',
   'CORREOS',
+  'CORDITRANS',
   'OTROS', // otros transportistas sin desglose por cliente (no imputable)
 ] as const
 
@@ -37,6 +38,7 @@ export const AGENCY_COLORS: Record<string, string> = {
   DHL:        '#ec4899',
   DHL_EXPORT: '#06b6d4',
   CORREOS:    '#f97316',
+  CORDITRANS: '#84cc16',
   OTROS:      '#94a3b8',
 }
 

@@ -167,12 +167,14 @@ export function parseSap(grid: Grid, layout: SapLayout): BillingRowInput[] {
 // FACTURAS DE AGENCIAS
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const AGENCY_NAMES = ['DHL_EXPORT', 'DHL', 'SEUR', 'PALEMANIA', 'TRANSAHER', 'REDUR', 'NACEX', 'CORREOS']
+export const AGENCY_NAMES = ['DHL_EXPORT', 'DHL', 'SEUR', 'PALEMANIA', 'TRANSAHER', 'REDUR', 'NACEX', 'CORREOS', 'CORDITRANS']
 
 /** Agencia que sugiere el nombre del archivo (DHL_EXPORT antes que DHL). */
 export function agencyFromFilename(name: string): string | null {
   const up = name.toUpperCase().replace(/[\s-]+/g, '_')
   if (/DHL_?EXPORT|DHL_?EXP/.test(up)) return 'DHL_EXPORT'
+  if (up.includes('LOZANO')) return 'REDUR'          // Lozano Transportes = delegación Redur Murcia
+  if (up.includes('PALEMANI')) return 'PALEMANIA'
   return AGENCY_NAMES.find(a => up.includes(a)) ?? null
 }
 
