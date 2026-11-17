@@ -67,7 +67,7 @@ export function buildMonthRows(m: ApiMonth): ClientRow[] {
       clients.set(key, c)
     }
     c.baseImponible += b.base_imponible
-    c.totalFacturas += b.num_facturas || 1
+    c.totalFacturas += b.num_facturas || 0
     if (!c.comercial && b.comercial) c.comercial = b.comercial
     if (!c.lineaNegocio && b.linea_negocio) c.lineaNegocio = b.linea_negocio
   }
@@ -103,12 +103,16 @@ export function buildMonthRows(m: ApiMonth): ClientRow[] {
     u.agencias[l.agency] = (u.agencias[l.agency] ?? 0) + l.amount
   }
 
-  const rows = [...clients.values(), ...sinAsignar.values()]
-  for (const r of rows) {
+  const all = [...clients.values(), ...sinAsignar.values()]
+  for (const r of all) {
     r.baseImponible = Math.round(r.baseImponible * 100) / 100
     for (const a of AGENCIES) r.agencias[a] = Math.round((r.agencias[a] ?? 0) * 100) / 100
     r.totalTransporte = Math.round(AGENCIES.reduce((s, a) => s + r.agencias[a], 0) * 100) / 100
-    r.pctTransporte = r.baseImponible > 0 ? r.totalTransporte / r.baseImponible : 0
+    // Cliente con transporte pero sin ventas ese mes → 100 % (sale en alertas)
+    r.pctTransporte = r.baseImponible > 0
+      ? r.totalTransporte / r.baseImponible
+      : (r.totalTransporte > 0 && !r.esSinAsignar ? 1 : 0)
   }
-  return rows
+  // El Excel SAP trae toda la cartera: solo se muestran los clientes con actividad ese mes
+  return all.filter(r => r.esSinAsignar || r.baseImponible !== 0 || r.totalFacturas > 0 || r.totalTransporte !== 0)
 }

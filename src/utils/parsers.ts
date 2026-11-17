@@ -33,24 +33,73 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 // FACTURACIÓN SAP
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SapField = 'invoice_number' | 'client_code' | 'client_name' | 'comercial' | 'linea_negocio' | 'base_imponible'
+export type SapField = 'invoice_number' | 'client_code' | 'client_name' | 'comercial' | 'grupo' | 'base_imponible' | 'num_facturas'
 
 export const SAP_FIELDS: { key: SapField; label: string; required: boolean }[] = [
   { key: 'client_code', label: 'Código cliente', required: true },
   { key: 'client_name', label: 'Nombre cliente', required: false },
-  { key: 'comercial', label: 'Comercial', required: false },
-  { key: 'linea_negocio', label: 'Línea de negocio', required: false },
-  { key: 'base_imponible', label: 'Base imponible', required: true },
-  { key: 'invoice_number', label: 'Nº factura', required: false },
+  { key: 'comercial', label: 'Comercial', required: true },
+  { key: 'grupo', label: 'Grupo', required: false },
+  { key: 'base_imponible', label: 'Ventas / base imponible', required: true },
+  { key: 'num_facturas', label: 'Nº facturas', required: false },
+  { key: 'invoice_number', label: 'Nº factura (si es por factura)', required: false },
 ]
+
+// ─── Línea de negocio ────────────────────────────────────────────────────────
+// Igual que en el flujo n8n: la línea sale del código del comercial
+// (FAR → FARMACIA, NT → NATU GRANEL, NTGC → GRAN CONSUMO, NTMP → NATU WEB, VF → VINTAGE).
+// Excepción: los clientes del grupo «MUESTRAS…» van a su propia línea MUESTRAS.
+
+export const LINEAS = ['FARMACIA', 'NATU GRANEL', 'GRAN CONSUMO', 'NATU WEB', 'VINTAGE', 'MUESTRAS', 'SIN COMERCIAL'] as const
+
+/** "INACTIVO NT01.1. JAIME GRAN CTA" → { code: 'NT01.1', name: 'JAIME GRAN CTA (inactivo)' } */
+export function splitComercial(raw: unknown): { code: string; name: string } {
+  let t = s(raw)
+  const inactivo = /^INACTIVO\s+/i.test(t)
+  t = t.replace(/^INACTIVO\s+/i, '')
+  const m = t.match(/^([A-Z]+\d+(?:\.\d+)?)\.?\s*(.*)$/i)
+  if (!m) return { code: '', name: '' } // «-Ningún empleado dep.ventas-» o vacío
+  const name = (m[2] || m[1]).replace(/[.\s]+$/, '').trim()
+  return { code: m[1].toUpperCase(), name: inactivo ? `${name} (inactivo)` : name }
+}
+
+const LINEA_EXCEPCIONES: Record<string, string> = {
+  NT09: 'VINTAGE', // NATUAROMATIC VINTAGE
+}
+
+export function lineaNegocio(comercialCode: string, grupo: unknown): string {
+  if (/MUESTRA/i.test(s(grupo))) return 'MUESTRAS'
+  const k = comercialCode.toUpperCase()
+  if (!k) return 'SIN COMERCIAL'
+  if (LINEA_EXCEPCIONES[k]) return LINEA_EXCEPCIONES[k]
+  if (/^FAR/.test(k)) return 'FARMACIA'
+  if (/^NTGC/.test(k)) return 'GRAN CONSUMO'
+  if (/^NTMP/.test(k)) return 'NATU WEB'
+  if (/^VFI?\d/.test(k)) return 'VINTAGE'
+  if (/^NT\d/.test(k)) return 'NATU GRANEL'
+  return 'SIN COMERCIAL'
+}
+
+/** Detecta "Ventas septiembre 2026" en la cabecera para proponer mes y año. */
+export function detectPeriod(headers: string[]): { year: number; month: number } | null {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  for (const h of headers) {
+    const t = lower(h)
+    const i = MESES.findIndex(m => t.includes(m) || (m === 'septiembre' && t.includes('setiembre')))
+    const y = t.match(/(20\d{2})/)
+    if (i >= 0 && y) return { year: +y[1], month: i + 1 }
+  }
+  return null
+}
 
 const SAP_PATTERNS: Record<SapField, RegExp[]> = {
   client_code: [/^(cod|codigo|cod\.)\s*(de\s*)?cliente/, /^cliente\s*(cod|codigo)/, /^n[ºo°]?\s*cliente/, /^cardcode$/, /^cliente$/],
-  client_name: [/^nombre\s*(de\s*)?cliente/, /^razon social/, /^nombre$/, /^cardname$/, /cliente.*nombre/],
+  client_name: [/^nombre\s*(de\s*)?cliente/, /^razon social/, /^nombre$/, /^cardname$/, /cliente.*nombre/, /^cliente$/],
   comercial: [/comercial/, /vendedor/, /empleado/, /agente/, /^slpname$/],
-  linea_negocio: [/linea/, /negocio/, /canal/, /departamento/, /division/],
-  base_imponible: [/base\s*imponible/, /^base$/, /importe\s*neto/, /^neto$/, /total\s*sin\s*iva/, /^importe$/],
-  invoice_number: [/n[ºo°]?\s*(de\s*)?factura/, /^factura$/, /num.*factura/, /^docnum$/, /documento/, /^n[ºo°]?\s*doc/],
+  grupo: [/^grupo/, /grupo/, /tipo\s*cliente/],
+  base_imponible: [/^ventas/, /base\s*imponible/, /^base$/, /importe\s*neto/, /^neto$/, /total\s*sin\s*iva/, /^importe$/],
+  num_facturas: [/n[ºo°]?\s*(de\s*)?facturas$/, /num.*facturas/, /^facturas$/],
+  invoice_number: [/^n[ºo°]?\s*(de\s*)?factura$/, /^factura$/, /^num.*factura$/, /^docnum$/, /^n[ºo°]?\s*doc/],
 }
 
 export interface SapLayout {
@@ -81,7 +130,7 @@ export function detectSapLayout(grid: Grid): SapLayout {
   if (best.score < 2) {
     best = {
       row: 0, score: 0,
-      mapping: { invoice_number: 0, client_code: 1, client_name: 2, comercial: 3, linea_negocio: -1, base_imponible: 4 },
+      mapping: { invoice_number: 0, client_code: 1, client_name: 2, comercial: 3, grupo: -1, base_imponible: 4, num_facturas: -1 },
     }
   }
   const width = Math.max(...grid.slice(0, 50).map(r => r.length), 0)
@@ -98,14 +147,17 @@ export function parseSap(grid: Grid, layout: SapLayout): BillingRowInput[] {
     if (!code) continue
     const lc = code.toLowerCase()
     if (lc.startsWith('total') || lc.includes('sin asignar')) continue
+    const com = splitComercial(get(row, 'comercial'))
+    const perInvoice = m.invoice_number >= 0
     out.push({
       invoice_number: s(get(row, 'invoice_number')).toUpperCase(),
       client_code: code,
       client_name: s(get(row, 'client_name')),
-      comercial: s(get(row, 'comercial')),
-      linea_negocio: s(get(row, 'linea_negocio')),
+      comercial: com.name || 'SIN COMERCIAL',
+      linea_negocio: lineaNegocio(com.code, get(row, 'grupo')),
       base_imponible: round2(parseAmount(get(row, 'base_imponible'))),
-      num_facturas: 1,
+      // Excel por cliente: nº facturas de su columna. Excel por factura: 1 por fila.
+      num_facturas: m.num_facturas >= 0 ? Math.trunc(parseAmount(get(row, 'num_facturas'))) : perInvoice ? 1 : 0,
     })
   }
   return out

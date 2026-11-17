@@ -4,7 +4,7 @@ import { api, type ApiMonth, type BillingRowInput, type InvoiceLineInput } from 
 import { buildMatcher, MONTH_NAMES, monthLabel } from '../utils/buildMonth'
 import {
   readGrid, detectSapLayout, parseSap, parseAgencyInvoice, agencyFromFilename,
-  SAP_FIELDS, type Grid, type SapLayout, type SapField,
+  SAP_FIELDS, detectPeriod, LINEAS, type Grid, type SapLayout, type SapField,
 } from '../utils/parsers'
 
 const PW_KEY = 'gt_upload_pw'
@@ -147,9 +147,18 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
   const rows: BillingRowInput[] = useMemo(() => (grid && layout ? parseSap(grid, layout) : []), [grid, layout])
   const stats = useMemo(() => {
     const clients = new Set(rows.map(r => r.client_code))
-    const comerciales = [...new Set(rows.map(r => r.comercial).filter(Boolean))].sort()
-    const lineas = [...new Set(rows.map(r => r.linea_negocio).filter(Boolean))].sort()
-    return { clients: clients.size, base: rows.reduce((s, r) => s + r.base_imponible, 0), comerciales, lineas }
+    const activos = new Set(rows.filter(r => r.base_imponible !== 0 || r.num_facturas > 0).map(r => r.client_code))
+    const comerciales = [...new Set(rows.filter(r => r.base_imponible !== 0).map(r => r.comercial))].sort()
+    const porLinea = new Map<string, { clientes: number; activos: number; ventas: number }>()
+    for (const r of rows) {
+      const l = porLinea.get(r.linea_negocio) ?? { clientes: 0, activos: 0, ventas: 0 }
+      l.clientes++; l.ventas += r.base_imponible
+      if (r.base_imponible !== 0 || r.num_facturas > 0) l.activos++
+      porLinea.set(r.linea_negocio, l)
+    }
+    const lineas = [...porLinea.entries()].sort((a, b) =>
+      (LINEAS as readonly string[]).indexOf(a[0]) - (LINEAS as readonly string[]).indexOf(b[0]))
+    return { clients: clients.size, activos: activos.size, base: rows.reduce((s, r) => s + r.base_imponible, 0), comerciales, lineas }
   }, [rows])
   const missingRequired = layout ? SAP_FIELDS.filter(f => f.required && layout.mapping[f.key] < 0) : []
 
@@ -158,7 +167,10 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
     if (!f) return
     try {
       const g = await readGrid(f)
-      setGrid(g); setLayout(detectSapLayout(g))
+      const l = detectSapLayout(g)
+      setGrid(g); setLayout(l)
+      const period = detectPeriod(l.headers)
+      if (period) { setYear(period.year); setMonth(period.month) }
     } catch (e) { setMsg({ kind: 'error', text: `No se pudo leer el Excel: ${(e as Error).message}` }) }
   }
 
@@ -232,13 +244,25 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
           {missingRequired.length > 0 ? (
             <Notice kind="error">Falta indicar: {missingRequired.map(f => f.label).join(', ')}</Notice>
           ) : (
-            <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 space-y-1">
-              <p><b>{rows.length}</b> líneas · <b>{stats.clients}</b> clientes · base imponible <b>{eur(stats.base)}</b></p>
-              <p className="text-xs text-slate-500">
-                Comerciales ({stats.comerciales.length}): {stats.comerciales.join(', ') || '—'}
+            <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 space-y-2">
+              <p>
+                <b>{stats.clients}</b> clientes en el Excel · <b>{stats.activos}</b> con ventas este mes ·
+                ventas <b>{eur(stats.base)}</b>
               </p>
+              <table className="text-xs w-full max-w-md">
+                <thead className="text-slate-500">
+                  <tr><th className="text-left font-medium">Línea de negocio</th><th className="text-right font-medium">Clientes</th><th className="text-right font-medium">Con ventas</th><th className="text-right font-medium">Ventas</th></tr>
+                </thead>
+                <tbody>
+                  {stats.lineas.map(([l, v]) => (
+                    <tr key={l} className={l === 'SIN COMERCIAL' ? 'text-amber-700' : ''}>
+                      <td>{l}</td><td className="text-right">{v.clientes}</td><td className="text-right">{v.activos}</td><td className="text-right">{eur(v.ventas)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               <p className="text-xs text-slate-500">
-                Líneas de negocio ({stats.lineas.length}): {stats.lineas.join(', ') || '—'}
+                Comerciales con ventas ({stats.comerciales.length}): {stats.comerciales.join(', ') || '—'}
               </p>
             </div>
           )}
@@ -247,17 +271,17 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
             <div className="overflow-x-auto border border-slate-200 rounded-lg">
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 text-slate-500">
-                  <tr>{['Nº factura', 'Código', 'Cliente', 'Comercial', 'Línea', 'Base'].map(h => <th key={h} className="px-2 py-1.5 text-left font-medium">{h}</th>)}</tr>
+                  <tr>{['Código', 'Cliente', 'Comercial', 'Línea', 'Ventas', 'Nº fact.'].map(h => <th key={h} className="px-2 py-1.5 text-left font-medium">{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {rows.slice(0, 5).map((r, i) => (
                     <tr key={i} className="border-t border-slate-100">
-                      <td className="px-2 py-1">{r.invoice_number}</td>
                       <td className="px-2 py-1">{r.client_code}</td>
                       <td className="px-2 py-1">{r.client_name}</td>
                       <td className="px-2 py-1">{r.comercial}</td>
                       <td className="px-2 py-1">{r.linea_negocio}</td>
                       <td className="px-2 py-1 text-right">{eur(r.base_imponible)}</td>
+                      <td className="px-2 py-1 text-right">{r.num_facturas}</td>
                     </tr>
                   ))}
                 </tbody>
