@@ -48,9 +48,9 @@ export const SAP_FIELDS: { key: SapField; label: string; required: boolean }[] =
 // ─── Línea de negocio ────────────────────────────────────────────────────────
 // Igual que en el flujo n8n: la línea sale del código del comercial
 // (FAR → FARMACIA, NT → NATU GRANEL, NTGC → GRAN CONSUMO, NTMP → NATU WEB, VF → VINTAGE).
-// Excepción: los clientes del grupo «MUESTRAS…» van a su propia línea MUESTRAS.
+// Excepción: los clientes del grupo «MUESTRAS…» y los que no tienen comercial van a la línea OTROS.
 
-export const LINEAS = ['FARMACIA', 'NATU GRANEL', 'GRAN CONSUMO', 'NATU WEB', 'VINTAGE', 'MUESTRAS', 'SIN COMERCIAL'] as const
+export const LINEAS = ['FARMACIA', 'NATU GRANEL', 'GRAN CONSUMO', 'NATU WEB', 'VINTAGE', 'OTROS'] as const
 
 /** "INACTIVO NT01.1. JAIME GRAN CTA" → { code: 'NT01.1', name: 'JAIME GRAN CTA (inactivo)' } */
 export function splitComercial(raw: unknown): { code: string; name: string } {
@@ -68,16 +68,16 @@ const LINEA_EXCEPCIONES: Record<string, string> = {
 }
 
 export function lineaNegocio(comercialCode: string, grupo: unknown): string {
-  if (/MUESTRA/i.test(s(grupo))) return 'MUESTRAS'
+  if (/MUESTRA/i.test(s(grupo))) return 'OTROS'
   const k = comercialCode.toUpperCase()
-  if (!k) return 'SIN COMERCIAL'
+  if (!k) return 'OTROS'
   if (LINEA_EXCEPCIONES[k]) return LINEA_EXCEPCIONES[k]
   if (/^FAR/.test(k)) return 'FARMACIA'
   if (/^NTGC/.test(k)) return 'GRAN CONSUMO'
   if (/^NTMP/.test(k)) return 'NATU WEB'
   if (/^VFI?\d/.test(k)) return 'VINTAGE'
   if (/^NT\d/.test(k)) return 'NATU GRANEL'
-  return 'SIN COMERCIAL'
+  return 'OTROS'
 }
 
 /** Detecta "Ventas septiembre 2026" en la cabecera para proponer mes y año. */

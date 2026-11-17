@@ -255,7 +255,7 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
                 </thead>
                 <tbody>
                   {stats.lineas.map(([l, v]) => (
-                    <tr key={l} className={l === 'SIN COMERCIAL' ? 'text-amber-700' : ''}>
+                    <tr key={l}>
                       <td>{l}</td><td className="text-right">{v.clientes}</td><td className="text-right">{v.activos}</td><td className="text-right">{eur(v.ventas)}</td>
                     </tr>
                   ))}
