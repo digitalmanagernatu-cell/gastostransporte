@@ -154,3 +154,17 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA api FROM PUBLIC;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA private FROM PUBLIC;
 GRANT USAGE ON SCHEMA api TO anonymous;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA api TO anonymous;
+
+-- ─── Cambios 18/11/2026: respuesta del dashboard por debajo del límite de 10 MB ──
+-- get_dashboard solo devuelve, de cada mes, los clientes con ventas/facturas o que
+-- aparecen en alguna línea de transporte (de cualquier mes), más billing_total_rows.
+-- La facturación completa de un mes se pide aparte, solo al cargar facturas:
+CREATE OR REPLACE FUNCTION api.get_month_billing(p_month_id int) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT COALESCE(jsonb_agg(jsonb_build_array(b.client_code, b.client_name, b.comercial, b.linea_negocio,
+         b.base_imponible::float8, b.num_facturas, b.invoice_number) ORDER BY b.id), '[]'::jsonb)
+  FROM billing_rows b WHERE b.month_id = p_month_id $$;
+GRANT EXECUTE ON FUNCTION api.get_month_billing(int) TO anonymous;
+-- (la versión actual de api.get_dashboard filtra con un CTE «bill»; ver la BD para el texto exacto)
+-- IMPORTANTE: al tocar la config de la Data API enviar SIEMPRE juntos db_schemas=['api'],
+-- db_anon_role='anonymous' y server_cors_allowed_origins, o se resetean a sus valores por defecto.

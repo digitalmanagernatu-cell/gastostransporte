@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AGENCIES } from '../config'
 import FolderImportTab from './FolderImportTab'
+import { useMonthBilling } from '../utils/useMonthBilling'
 import { api, type ApiMonth, type BillingRowInput, type InvoiceLineInput } from '../utils/api'
 import { buildMatcher, MONTH_NAMES, monthLabel } from '../utils/buildMonth'
 import {
@@ -339,7 +340,7 @@ function SapTab({ months, password, onChanged }: { months: ApiMonth[]; password:
                 <div>
                   <span className="font-medium text-slate-800">{monthLabel(m)}</span>
                   <span className="text-xs text-slate-400 ml-2">
-                    {new Set(m.billing.map(b => b.client_code)).size} clientes · {m.invoices.length} facturas de transporte
+                    {(m.billing_total_rows ?? m.billing.length).toLocaleString('es-ES')} clientes · {m.invoices.length} facturas de transporte
                   </span>
                 </div>
                 <button
@@ -378,7 +379,8 @@ function AgencyTab({ agency, months, password, onChanged }: { agency: string; mo
   const [inputKey, setInputKey] = useState(0)
 
   const month = months.find(m => m.id === monthId) ?? null
-  const match = useMemo(() => buildMatcher(month?.billing ?? []), [month])
+  const { billing: fullBilling } = useMonthBilling(month)
+  const match = useMemo(() => buildMatcher(fullBilling), [fullBilling])
   const uploaded = month?.invoices.filter(i => i.agency === agency) ?? []
 
   if (months.length === 0) {

@@ -37,6 +37,8 @@ export interface ApiMonth {
   month: number
   billing_filename: string | null
   updated_at: string
+  /** nº total de clientes del Excel SAP (en `billing` solo vienen los que tienen actividad) */
+  billing_total_rows?: number
   billing: ApiBillingRow[]
   invoices: ApiInvoice[]
   lines: ApiLine[]
@@ -89,6 +91,12 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}, retry = tr
 
 export const api = {
   getDashboard: () => rpc<ApiMonth[]>('get_dashboard'),
+  /** Facturación completa de un mes (formato compacto → objetos) */
+  getMonthBilling: async (monthId: number): Promise<ApiBillingRow[]> => {
+    const rows = await rpc<[string, string, string, string, number, number, string][]>('get_month_billing', { p_month_id: monthId })
+    return rows.map(([client_code, client_name, comercial, linea_negocio, base_imponible, num_facturas, invoice_number]) =>
+      ({ client_code, client_name, comercial, linea_negocio, base_imponible, num_facturas, invoice_number }))
+  },
   checkPassword: (password: string) => rpc<boolean>('check_password', { p_password: password }),
   upsertMonth: (password: string, year: number, month: number, filename: string, rows: BillingRowInput[]) =>
     rpc<{ id: number; rows: number }>('upsert_month', {

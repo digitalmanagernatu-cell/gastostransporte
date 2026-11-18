@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { AGENCIES, SHAREPOINT_FN_URL, agencyLabel } from '../config'
-import { api, type ApiMonth } from '../utils/api'
+import { api, type ApiBillingRow, type ApiMonth } from '../utils/api'
 import { MONTH_NAMES, monthLabel } from '../utils/buildMonth'
 import { analyzeFolder, matchStats, otrosLines, type FolderFile, type Proposal } from '../utils/folderImport'
 import { parseAgencyInvoice, type Grid } from '../utils/parsers'
@@ -42,6 +42,7 @@ export default function FolderImportTab({ months, password, onChanged }: Props) 
   const [props, setProps] = useState<Proposal[]>([])
   const [msg, setMsg] = useState<{ kind: 'ok' | 'warn' | 'error'; text: string } | null>(null)
   const cache = useRef(new Map<string, ArrayBuffer>())
+  const [billing, setBilling] = useState<ApiBillingRow[]>([])
 
   const month = months.find(m => m.id === monthId) ?? null
 
@@ -64,7 +65,10 @@ export default function FolderImportTab({ months, password, onChanged }: Props) 
       }
       if (!target) throw new Error('Elige el mes')
       const pdfjs = await loadBrowserPdfjs()
-      const res = await analyzeFolder(list.files, target.billing, target.invoices, {
+      setProgress('Descargando la facturación SAP del mes…')
+      const fullBilling = await api.getMonthBilling(target.id)
+      setBilling(fullBilling)
+      const res = await analyzeFolder(list.files, fullBilling, target.invoices, {
         fetchFile: async f => {
           const buf = await (await callFn({ action: 'file', url: url.trim(), password, path: f.path })).arrayBuffer()
           cache.current.set(f.path, buf)
@@ -97,7 +101,7 @@ export default function FolderImportTab({ months, password, onChanged }: Props) 
   const canLoad = (p: Proposal) => p.agency === 'OTROS' ? !!p.supplier.trim() && p.amount !== null && p.amount !== 0 : p.lines.length > 0 && !!p.agency
   const toLoad = props.filter(p => p.action === 'cargar' && canLoad(p))
   // Códigos de cliente de las facturas que no están en el SAP del mes (export incompleto)
-  const sapCodes = new Set((month?.billing ?? []).map(b => b.client_code.replace(/[\s\-./#]/g, '').toUpperCase()))
+  const sapCodes = new Set(billing.map(b => b.client_code.replace(/[\s\-./#]/g, '').toUpperCase()))
   const missing = new Map<string, number>()
   for (const p of toLoad) if (p.agency !== 'OTROS') for (const l of p.lines) {
     const c = (l.client_code ?? '').replace(/[\s\-./#]/g, '').toUpperCase()
@@ -176,7 +180,7 @@ export default function FolderImportTab({ months, password, onChanged }: Props) 
               </thead>
               <tbody>
                 {props.map((p, i) => {
-                  const st = p.agency !== 'OTROS' && p.lines.length && month ? matchStats(p, month.billing) : null
+                  const st = p.agency !== 'OTROS' && p.lines.length && month ? matchStats(p, billing) : null
                   return (
                     <tr key={p.file.path} className={`border-t border-slate-100 align-top ${rowCls(p)}`}>
                       <td className="px-2 py-1.5">
